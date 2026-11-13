@@ -1,3 +1,3 @@
-i make games. (^_^)
-i make whatever comes up to mind. (@_@)
+i make games. (^﹏^)
+i make whatever comes up to mind. (@﹏@)
 im just nooby, not pro game designer. (⫪﹏⫪)
