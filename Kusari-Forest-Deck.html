@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kurotsuta, Core of Decay — Digital Playmat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0b0f0c;
+      color: #e2e8f0;
+      user-select: none;
+    }
+    .tapped {
+      transform: rotate(90deg);
+      margin-left: 16px;
+      margin-right: 16px;
+    }
+    /* Custom subtle scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #111814;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2d4234;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col overflow-x-hidden">
+
+  <!-- Top HUD / Controls -->
+  <header class="bg-[#121914] border-b border-emerald-900/60 px-3 py-2.5 flex flex-wrap items-center justify-between gap-2 sticky top-0 z-30 shadow-lg">
+    <div class="flex items-center gap-3">
+      <div>
+        <h1 class="text-sm sm:text-base font-extrabold text-emerald-400 tracking-tight flex items-center gap-1.5">
+          <span>🌿</span> Kurotsuta Playmat
+        </h1>
+        <p class="text-[11px] text-slate-400">100-Card Custom Golgari Ecosystem</p>
+      </div>
+
+      <!-- Life Counter -->
+      <div class="flex items-center bg-[#1a241d] border border-emerald-800/60 rounded-xl px-2.5 py-1 gap-2">
+        <span class="text-[11px] font-semibold uppercase text-emerald-300/80">You</span>
+        <button onclick="changeLife('you', -1)" class="w-7 h-7 rounded-lg bg-rose-950/80 hover:bg-rose-800 text-rose-200 font-bold text-base flex items-center justify-center active:scale-95">−</button>
+        <span id="life-total" class="text-lg font-extrabold text-white min-w-[2.2rem] text-center">40</span>
+        <button onclick="changeLife('you', 1)" class="w-7 h-7 rounded-lg bg-emerald-900/80 hover:bg-emerald-700 text-emerald-100 font-bold text-base flex items-center justify-center active:scale-95">+</button>
+      </div>
+
+      <!-- 1v1 Opponent Life Counter -->
+      <div class="flex items-center bg-[#1a241d] border border-rose-800/60 rounded-xl px-2.5 py-1 gap-2">
+        <span class="text-[11px] font-semibold uppercase text-rose-300/80">Opp</span>
+        <button onclick="changeLife('opp', -1)" class="w-7 h-7 rounded-lg bg-rose-950/80 hover:bg-rose-800 text-rose-200 font-bold text-base flex items-center justify-center active:scale-95">−</button>
+        <span id="opp-life-total" class="text-lg font-extrabold text-white min-w-[2.2rem] text-center">40</span>
+        <button onclick="changeLife('opp', 1)" class="w-7 h-7 rounded-lg bg-emerald-900/80 hover:bg-emerald-700 text-emerald-100 font-bold text-base flex items-center justify-center active:scale-95">+</button>
+      </div>
+
+      <!-- Live Devotion Tracker -->
+      <div class="hidden md:flex items-center bg-[#1a241d] border border-slate-700/70 rounded-xl px-3 py-1 gap-3 text-xs">
+        <div class="flex items-center gap-1" title="Devotion to Green (Kurotsuta gains Reach at 10+)">
+          <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+          <span class="text-slate-300">Devotion G:</span>
+          <span id="devotion-g" class="font-bold text-emerald-400">0</span>
+        </div>
+        <div class="flex items-center gap-1" title="Devotion to Black (Kurotsuta gains Deathtouch at 10+)">
+          <span class="w-3 h-3 rounded-full bg-purple-500 inline-block"></span>
+          <span class="text-slate-300">Devotion B:</span>
+          <span id="devotion-b" class="font-bold text-purple-400">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex flex-wrap items-center gap-1.5">
+      <button onclick="newGame()" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs shadow active:scale-95 transition">
+        New Game (Draw 7)
+      </button>
+      <button onclick="mulligan()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs border border-slate-700 active:scale-95 transition">
+        Mulligan
+      </button>
+      <button onclick="untapAll()" class="px-2.5 py-1.5 rounded-xl bg-amber-600/90 hover:bg-amber-500 text-slate-950 font-bold text-xs active:scale-95 transition">
+        Untap All
+      </button>
+      <button onclick="openTokenModal()" class="px-2.5 py-1.5 rounded-xl bg-teal-900/80 hover:bg-teal-800 text-teal-100 font-semibold text-xs border border-teal-700/70 active:scale-95 transition">
+        + Token
+      </button>
+      <button onclick="toggleEmblemModal()" class="px-2.5 py-1.5 rounded-xl bg-purple-950/90 hover:bg-purple-900 text-purple-200 font-semibold text-xs border border-purple-700/70 active:scale-95 transition">
+        Emblem: <span id="emblem-badge" class="underline">None</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Active Emblem Banner (if active) -->
+  <div id="active-emblem-bar" class="hidden bg-purple-950/60 border-b border-purple-800/60 px-4 py-1.5 text-xs flex items-center justify-between gap-2">
+    <div>
+      <span id="emblem-bar-title" class="font-bold text-purple-300"></span>
+      <span id="emblem-bar-text" class="text-purple-100/90 ml-2"></span>
+    </div>
+    <button onclick="toggleEmblemModal()" class="text-[11px] bg-purple-900/80 hover:bg-purple-800 px-2 py-0.5 rounded-lg text-purple-200 shrink-0">Change</button>
+  </div>
+
+  <!-- Main Playmat Area -->
+  <main class="flex-1 flex flex-col lg:flex-row gap-3 p-3 max-w-[1600px] w-full mx-auto">
+
+    <!-- Left Sidebar: Command Zone, Library, Graveyard, Exile -->
+    <aside class="w-full lg:w-64 shrink-0 flex flex-row lg:flex-col gap-2.5 overflow-x-auto pb-1">
+
+      <!-- Command Zone -->
+      <div class="bg-[#131b16] border border-emerald-800/60 rounded-2xl p-2.5 min-w-[210px] lg:min-w-0">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Command Zone</span>
+          <span class="text-[11px] text-slate-400">Tax: +<span id="cmd-tax">0</span></span>
+        </div>
+        <div id="command-zone-list" class="space-y-2"></div>
+      </div>
+
+      <!-- Library Pile -->
+      <div class="bg-[#131b16] border border-slate-800 rounded-2xl p-2.5 min-w-[190px] lg:min-w-0 flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">Library</span>
+          <span id="library-count" class="text-xs font-extrabold bg-slate-800 px-2 py-0.5 rounded-full text-emerald-400">99</span>
+        </div>
+        <div class="grid grid-cols-2 gap-1.5">
+          <button onclick="drawCards(1)" class="col-span-2 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs active:scale-95 transition">
+            Draw Card
+          </button>
+          <button onclick="millCards(1)" class="py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium active:scale-95">
+            Mill 1
+          </button>
+          <button onclick="millCards(2)" class="py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium active:scale-95">
+            Mill 2
+          </button>
+          <button onclick="shuffleLibrary()" class="py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium active:scale-95">
+            Shuffle
+          </button>
+          <button onclick="openZoneBrowser('library')" class="py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 text-xs font-medium active:scale-95">
+            Search
+          </button>
+        </div>
+      </div>
+
+      <!-- Graveyard & Exile Counters -->
+      <div class="bg-[#131b16] border border-slate-800 rounded-2xl p-2.5 min-w-[180px] lg:min-w-0 flex flex-col gap-2 justify-center">
+        <button onclick="openZoneBrowser('graveyard')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-[#1a221d] hover:bg-[#222d26] border border-slate-700/80 transition">
+          <span class="text-xs font-semibold text-slate-200">🪦 Graveyard</span>
+          <span id="graveyard-count" class="text-xs font-extrabold bg-slate-800 px-2 py-0.5 rounded-full text-amber-300">0</span>
+        </button>
+        <button onclick="openZoneBrowser('exile')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-[#1a221d] hover:bg-[#222d26] border border-slate-700/80 transition">
+          <span class="text-xs font-semibold text-slate-200">🌀 Exile</span>
+          <span id="exile-count" class="text-xs font-extrabold bg-slate-800 px-2 py-0.5 rounded-full text-purple-300">0</span>
+        </button>
+      </div>
+
+    </aside>
+
+    <!-- Center/Right: Battlefield & Hand -->
+    <section class="flex-1 flex flex-col gap-3 min-w-0">
+
+      <!-- Battlefield: Creatures, Artifacts, Enchantments -->
+      <div class="bg-[#101712] border border-emerald-900/50 rounded-2xl p-3 flex-1 min-h-[260px] flex flex-col">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-400/90">Battlefield — Permanents</h2>
+          <span class="text-[11px] text-slate-400">Tap card to Tap/Untap • Long-press or click "Inspect / Counters" for +1/+1s & zones</span>
+        </div>
+        <div id="battlefield-permanents" class="flex flex-wrap gap-3 items-start content-start flex-1">
+          <p class="text-xs text-slate-500 italic p-4">Your battlefield is empty. Play cards from your hand below!</p>
+        </div>
+      </div>
+
+      <!-- Battlefield: Lands -->
+      <div class="bg-[#0e1410] border border-slate-800/90 rounded-2xl p-3 min-h-[115px]">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-amber-400/80">Lands (<span id="land-count">0</span>)</h2>
+          <span class="text-[11px] text-slate-400">Tap any land to toggle tapped state</span>
+        </div>
+        <div id="battlefield-lands" class="flex flex-wrap gap-2 items-start"></div>
+      </div>
+
+      <!-- Hand Zone -->
+      <div class="bg-[#141c17] border border-emerald-800/60 rounded-2xl p-3 shadow-inner">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-300">
+            Your Hand (<span id="hand-count">0</span><span id="hand-limit-display"></span>)
+          </h2>
+          <span class="text-[11px] text-slate-400">Click a card to inspect, cast, or move</span>
+        </div>
+        <div id="hand-zone" class="flex gap-2.5 overflow-x-auto pb-2 min-h-[145px] items-stretch"></div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Card Inspector & Action Modal -->
+  <div id="card-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4 z-50" onclick="closeModalOnBackdrop(event, 'card-modal')">
+    <div class="bg-[#151e18] border border-emerald-700/70 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <span id="modal-zone-tag" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">Zone</span>
+          <h3 id="modal-card-name" class="text-lg font-extrabold text-white mt-1">Card Name</h3>
+          <p id="modal-card-type" class="text-xs text-emerald-300/90 font-medium">Card Type</p>
+        </div>
+        <div class="text-right">
+          <span id="modal-card-cost" class="text-xs font-bold bg-slate-800 px-2.5 py-1 rounded-lg text-amber-300 border border-slate-700">Cost</span>
+          <div id="modal-card-pt" class="text-sm font-extrabold text-white mt-1.5"></div>
+        </div>
+      </div>
+
+      <div class="bg-[#0e1410] border border-slate-800 rounded-xl p-3 text-xs text-slate-200 leading-relaxed whitespace-pre-line" id="modal-card-text"></div>
+
+      <!-- Counters Control (shown when on battlefield or command zone) -->
+      <div id="modal-counters-box" class="bg-[#1a241d] border border-slate-700/80 rounded-xl p-3 space-y-2.5 hidden">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-emerald-300">+1/+1 Counters</span>
+          <div class="flex items-center gap-2">
+            <button onclick="adjustCounter('plus1', -1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold">−</button>
+            <span id="modal-plus1-val" class="text-sm font-extrabold text-white w-6 text-center">0</span>
+            <button onclick="adjustCounter('plus1', 1)" class="w-8 h-8 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold">+</button>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2 pt-1 border-t border-slate-700/60">
+          <button onclick="toggleKeywordCounter('reach')" id="btn-reach-counter" class="px-2.5 py-1 rounded-lg text-xs font-semibold border transition">
+            + Reach Counter
+          </button>
+          <button onclick="toggleKeywordCounter('deathtouch')" id="btn-deathtouch-counter" class="px-2.5 py-1 rounded-lg text-xs font-semibold border transition">
+            + Deathtouch Counter
+          </button>
+        </div>
+      </div>
+
+      <!-- Zone Movement Actions -->
+      <div id="modal-actions" class="grid grid-cols-2 gap-2 pt-1"></div>
+
+      <button onclick="closeModal('card-modal')" class="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">
+        Close
+      </button>
+    </div>
+  </div>
+
+  <!-- Token Spawner Modal -->
+  <div id="token-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4 z-50" onclick="closeModalOnBackdrop(event, 'token-modal')">
+    <div class="bg-[#151e18] border border-teal-700/70 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-3">
+      <h3 class="text-base font-extrabold text-teal-300">Create Token on Battlefield</h3>
+      <p class="text-xs text-slate-400">Quick-spawn tokens generated by Kurotsuta and your forest cards:</p>
+
+      <div class="space-y-2">
+        <div class="bg-[#0e1410] border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-2">
+          <div>
+            <p class="text-xs font-bold text-emerald-300">Ooze Plant Token (0/0)</p>
+            <p class="text-[11px] text-slate-400">From Kurotsuta's death split trigger</p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <input id="ooze-token-counters" type="number" min="1" max="20" value="2" class="w-12 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white text-center" title="+1/+1 counters" />
+            <button onclick="spawnToken('ooze')" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs">Spawn</button>
+          </div>
+        </div>
+
+        <button onclick="spawnToken('saproling')" class="w-full bg-[#0e1410] hover:bg-[#19241c] border border-slate-800 rounded-xl p-3 flex items-center justify-between text-left transition">
+          <div>
+            <p class="text-xs font-bold text-lime-300">1/1 Green Saproling Token</p>
+            <p class="text-[11px] text-slate-400">Creature Token — Saproling</p>
+          </div>
+          <span class="px-3 py-1 rounded-lg bg-lime-700 text-white font-bold text-xs">+1</span>
+        </button>
+
+        <button onclick="spawnToken('spider')" class="w-full bg-[#0e1410] hover:bg-[#19241c] border border-slate-800 rounded-xl p-3 flex items-center justify-between text-left transition">
+          <div>
+            <p class="text-xs font-bold text-amber-300">1/2 Green Spider Token</p>
+            <p class="text-[11px] text-slate-400">Reach (from Dōkutsu Broodmother)</p>
+          </div>
+          <span class="px-3 py-1 rounded-lg bg-amber-700 text-white font-bold text-xs">+1</span>
+        </button>
+      </div>
+
+      <button onclick="closeModal('token-modal')" class="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">Close</button>
+    </div>
+  </div>
+
+  <!-- Double-Faced Emblem Selector Modal -->
+  <div id="emblem-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4 z-50" onclick="closeModalOnBackdrop(event, 'emblem-modal')">
+    <div class="bg-[#151e18] border border-purple-700/70 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-3">
+      <h3 class="text-base font-extrabold text-purple-300">Double-Faced Power-Level Emblem</h3>
+      <p class="text-xs text-slate-400">Choose your pre-game modifier based on your opponent's deck strength:</p>
+
+      <div class="space-y-2.5">
+        <button onclick="setEmblem('none')" class="w-full text-left p-3 rounded-xl border border-slate-700 bg-[#0e1410] hover:border-slate-500 transition">
+          <div class="text-xs font-bold text-slate-200">No Emblem (Equal-Power Table)</div>
+          <div class="text-[11px] text-slate-400 mt-0.5">Standard 100-card Commander game with no modifier.</div>
+        </button>
+
+        <button onclick="setEmblem('front')" class="w-full text-left p-3 rounded-xl border border-rose-800/70 bg-rose-950/20 hover:border-rose-600 transition">
+          <div class="text-xs font-bold text-rose-300">Front: Toxic Spores (vs. Lower-Power Decks)</div>
+          <div class="text-[11px] text-slate-300 mt-1 leading-relaxed">
+            • Creatures you control enter tapped and get -0/-1.<br/>
+            • At the beginning of your upkeep, you lose 2 life unless you sacrifice a nontoken creature. If you do, each opponent loses 1 life and you draw a card.
+          </div>
+        </button>
+
+        <button onclick="setEmblem('back')" class="w-full text-left p-3 rounded-xl border border-emerald-700/70 bg-emerald-950/25 hover:border-emerald-500 transition">
+          <div class="text-xs font-bold text-emerald-300">Back: Fungal Bloom (vs. Higher-Power Decks)</div>
+          <div class="text-[11px] text-slate-300 mt-1 leading-relaxed">
+            • Whenever one or more creatures you control die, put a +1/+1 counter on up to one target creature you control.<br/>
+            • Your maximum hand size is 5.
+          </div>
+        </button>
+      </div>
+
+      <button onclick="closeModal('emblem-modal')" class="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">Close</button>
+    </div>
+  </div>
+
+  <!-- Zone Browser Modal (Library Search, Graveyard, Exile) -->
+  <div id="browser-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4 z-50" onclick="closeModalOnBackdrop(event, 'browser-modal')">
+    <div class="bg-[#151e18] border border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl flex flex-col max-h-[82vh]">
+      <div class="flex items-center justify-between mb-3">
+        <h3 id="browser-title" class="text-base font-extrabold text-white">Zone Browser</h3>
+        <button onclick="closeModal('browser-modal')" class="text-xs text-slate-400 hover:text-white px-2 py-1">✕</button>
+      </div>
+      <input id="browser-search" type="text" oninput="renderBrowserList()" placeholder="Filter by card name or type..." class="w-full bg-[#0e1410] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white mb-3 focus:outline-none focus:border-emerald-500" />
+      <div id="browser-list" class="flex-1 overflow-y-auto space-y-1.5 pr-1"></div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-4 right-4 bg-emerald-900 border border-emerald-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xl opacity-0 pointer-events-none transition-opacity duration-200 z-50"></div>
+
+  <script>
+    // Complete 100-Card Custom Deck Database
+    const DECK_BLUEPRINT = [
+      // Commander (1)
+      { name: "Kurotsuta, Core of Decay", cost: "{2}{B}{G}", type: "Legendary Creature — Ooze Plant", pt: "3/5", isCommander: true, text: "Whenever your devotion to green becomes 10 or greater, if Kurotsuta, Core of Decay doesn't have a reach counter on it, put a reach counter on it.\nWhenever your devotion to black becomes 10 or greater, if Kurotsuta, Core of Decay doesn't have a deathtouch counter on it, put a deathtouch counter on it.\nWhenever a creature you control with one or more +1/+1 counters on it dies, create a 0/0 green Ooze Plant creature token with that many +1/+1 counters on it, minus one." },
+
+      // The Four Generals (4)
+      { name: "Nuregami, the Primeval Gel", cost: "{3}{G}{G}", type: "Legendary Creature — Ooze", pt: "0/0", defaultCounters: 5, text: "Nuregami, the Primeval Gel enters with five +1/+1 counters on it.\nWhenever another creature you control dies, put a +1/+1 counter on Nuregami, the Primeval Gel. (Triggers once each turn.)" },
+      { name: "Kusunoki, Canopy Bastion", cost: "{4}{G}{G}", type: "Legendary Creature — Plant Elemental", pt: "2/7", text: "Whenever Kusunoki, Canopy Bastion blocks, choose one —\n• Put a +1/+1 counter on target creature you control.\n• Create a 1/1 green Saproling creature token." },
+      { name: "Jorō-Hime, Weaver of Sighs", cost: "{2}{B}{G}", type: "Legendary Creature — Spider", pt: "2/5", text: "Reach, deathtouch\nWhenever one or more +1/+1 counters are put on a creature you control, each opponent loses 1 life and you gain 1 life. (Triggers once each turn.)" },
+      { name: "Kōchū-Ō, Sovereign of Husk", cost: "{3}{B}{B}", type: "Legendary Creature — Insect Horror", pt: "4/4", text: "Menace\n{1}{B}, Exile a creature card from your graveyard: Put two +1/+1 counters on target creature you control. Activate only as a sorcery." },
+
+      // Creatures 1-2 Mana (12)
+      { name: "Kinoko Sapling", cost: "{G}", type: "Creature — Plant", pt: "0/2", text: "Defender\n{T}: Add {G} or {B}." },
+      { name: "Sanguine Hiru", cost: "{B}", type: "Creature — Insect", pt: "1/1", text: "Deathtouch\nWhen Sanguine Hiru dies, you gain 2 life." },
+      { name: "Nectar-Bud Kodama", cost: "{G}", type: "Creature — Plant", pt: "0/1", text: "Sacrifice Nectar-Bud Kodama: Put a +1/+1 counter on target creature you control. Activate only as a sorcery." },
+      { name: "Koke-Mushi Skitterer", cost: "{G}", type: "Creature — Insect", pt: "1/1", text: "When Koke-Mushi Skitterer enters, you may put a +1/+1 counter on target creature you control." },
+      { name: "Ash-Mire Leech", cost: "{B}", type: "Creature — Insect", pt: "1/1", text: "Deathtouch\nWhen Ash-Mire Leech dies, mill a card." },
+      { name: "Barkskin Kabuto", cost: "{1}{G}", type: "Creature — Insect", pt: "2/3", text: "When Barkskin Kabuto dies, put a +1/+1 counter on target creature you control." },
+      { name: "Kuro-Kumo Ambush", cost: "{G}{G}", type: "Creature — Spider", pt: "1/3", text: "Reach, deathtouch" },
+      { name: "Carrion Gnawer", cost: "{1}{B}", type: "Creature — Insect", pt: "2/2", text: "When Carrion Gnawer dies, each opponent loses 1 life and you gain 1 life." },
+      { name: "Inky Amalgam", cost: "{B}{B}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 2, text: "Enters with two +1/+1 counters on it." },
+      { name: "Kazura Strangler", cost: "{1}{G}", type: "Creature — Plant", pt: "1/3", text: "Reach\nWhen Kazura Strangler enters, create a 1/1 green Saproling creature token." },
+      { name: "Deepwood Mycelia", cost: "{1}{G}", type: "Creature — Plant", pt: "0/3", text: "Defender\n{T}: Add {G}." },
+      { name: "Necrotic Scarab", cost: "{1}{B}", type: "Creature — Insect", pt: "1/2", text: "When Necrotic Scarab dies, draw a card and lose 1 life." },
+
+      // Creatures 3-4 Mana (14)
+      { name: "Shrine-Root Cultivator", cost: "{2}{G}", type: "Creature — Plant", pt: "1/4", text: "When Shrine-Root Cultivator enters, search your library for a basic land card, put it onto the battlefield tapped, then shuffle." },
+      { name: "Caustic Gel", cost: "{1}{G}{G}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 3, text: "Enters with three +1/+1 counters on it.\nWhen Caustic Gel enters, destroy up to one target artifact or enchantment." },
+      { name: "Yami-Gumo Stalker", cost: "{1}{B}{B}", type: "Creature — Spider", pt: "2/4", text: "Reach\nWhenever a creature with flying attacks you, Yami-Gumo Stalker deals 2 damage to that creature." },
+      { name: "Kuchiki Shambler", cost: "{2}{B}", type: "Creature — Plant", pt: "2/3", text: "When Kuchiki Shambler dies, return target creature card with mana value 2 or less from your graveyard to your hand." },
+      { name: "Fission Slime", cost: "{2}{G}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 3, text: "Enters with three +1/+1 counters on it.\nWhen Fission Slime dies, you gain 2 life." },
+      { name: "Silk-Spindle Recluse", cost: "{2}{G}", type: "Creature — Spider", pt: "2/3", text: "Reach\nWhen Silk-Spindle Recluse enters, create a 1/1 green Saproling creature token." },
+      { name: "Blight-Cap Ooze", cost: "{1}{B}{G}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 2, text: "Enters with two +1/+1 counters on it.\nWhen Blight-Cap Ooze dies, each opponent loses 1 life." },
+      { name: "Oni-Horned Beetle", cost: "{2}{B}", type: "Creature — Insect", pt: "2/2", text: "Menace\nWhen Oni-Horned Beetle dies, put a +1/+1 counter on target creature you control." },
+      { name: "Canopy Sentinel", cost: "{2}{G}", type: "Creature — Spider", pt: "2/3", text: "Reach\nWhenever Canopy Sentinel blocks, draw a card." },
+      { name: "Aegis Kuwagata", cost: "{2}{G}{G}", type: "Creature — Insect", pt: "2/5", text: "Vigilance\n{1}{G}: Target creature you control gains hexproof until end of turn." },
+      { name: "Haka-Gumo Weaver", cost: "{2}{B}{G}", type: "Creature — Spider", pt: "2/4", text: "Reach\nAt the beginning of your end step, if a creature died this turn, draw a card and lose 1 life." },
+      { name: "Puffball Matango", cost: "{3}{G}", type: "Creature — Plant Fungus", pt: "3/4", text: "Whenever Puffball Matango is dealt combat damage, you may create that many 1/1 green Saproling creature tokens." },
+      { name: "Venomous Jelly", cost: "{2}{B}{B}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 4, text: "Enters with four +1/+1 counters on it.\nWhen Venomous Jelly dies, target creature an opponent controls gets -2/-2 until end of turn." },
+      { name: "Spore-Lantern Fungus", cost: "{2}{G}{G}", type: "Creature — Plant Fungus", pt: "3/3", text: "When Spore-Lantern Fungus enters, put a +1/+1 counter on up to one target creature you control." },
+
+      // Creatures 5-6 Mana (8 — note: 7 listed in 5-6 mana section, let's verify count = 100 exact)
+      { name: "Dōkutsu Broodmother", cost: "{3}{G}{G}", type: "Creature — Spider", pt: "3/6", text: "Reach\nWhen Dōkutsu Broodmother enters, create two 1/2 green Spider creature tokens with reach." },
+      { name: "Tsuchigumo Huntress", cost: "{3}{B}{G}", type: "Creature — Spider", pt: "3/5", text: "Reach, deathtouch\nWhenever a creature you control with a +1/+1 counter on it dies, you gain 1 life." },
+      { name: "Ancient Jubokko", cost: "{4}{B}", type: "Creature — Plant", pt: "4/4", text: "When Ancient Jubokko enters, return target creature card with mana value 2 or less from your graveyard to your hand." },
+      { name: "Abyssal Protoplasm", cost: "{3}{B}{G}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 4, text: "Enters with four +1/+1 counters on it.\nWhen Abyssal Protoplasm enters, you may exile up to two creature cards from graveyards. Put a +1/+1 counter on Abyssal Protoplasm for each card exiled this way." },
+      { name: "Elder Sugi Colossus", cost: "{4}{G}{G}", type: "Creature — Plant Elemental", pt: "4/7", text: "Trample\nWhenever a Saproling or Plant you control dies, you gain 2 life." },
+      { name: "Kuro-Kabuto Dreadstag", cost: "{4}{B}{B}", type: "Creature — Insect Horror", pt: "5/4", text: "Menace\nWhen Kuro-Kabuto Dreadstag enters, target opponent sacrifices a creature." },
+      { name: "Shinkai Leviathan", cost: "{4}{B}{G}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 5, text: "Enters with five +1/+1 counters on it.\nTrample\nAt the beginning of your end step, if you control a creature with power 5 or greater, put a +1/+1 counter on target creature you control." },
+
+      // Instants & Sorceries (15)
+      { name: "Nourish the Core", cost: "{B}{G}", type: "Instant", text: "Put a +1/+1 counter on target creature you control. If it's an Ooze, put two +1/+1 counters on it instead." },
+      { name: "Withering Touch", cost: "{1}{B}", type: "Instant", text: "Target creature gets -2/-2 until end of turn. If it dies this turn, you gain 2 life." },
+      { name: "Corrosive Dissolution", cost: "{1}{G}", type: "Instant", text: "Destroy target artifact or enchantment. If you control an Ooze, draw a card." },
+      { name: "Kodama's Awakening", cost: "{1}{G}", type: "Sorcery", text: "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. You gain 2 life." },
+      { name: "Chitinous Ward", cost: "{1}{G}", type: "Instant", text: "Target creature you control gets +2/+2 until end of turn. If it's an Ooze or Plant, it also gains hexproof until end of turn." },
+      { name: "Venomous Retaliation", cost: "{1}{G}", type: "Instant", text: "Target creature you control deals damage equal to its toughness to target creature you don't control." },
+      { name: "Rebirth from Rot", cost: "{2}{G}", type: "Sorcery", text: "Return target creature card with mana value 3 or less from your graveyard to the battlefield. It enters with a +1/+1 counter on it." },
+      { name: "Mycelial Veil", cost: "{2}{G}", type: "Instant", text: "Choose one —\n• Prevent all combat damage that would be dealt to target creature you control this turn.\n• Prevent all noncombat damage that would be dealt to target creature you control this turn.\nIf that creature is an Ooze, Plant, Spider, or Insect, put a +1/+1 counter on it." },
+      { name: "Threads of Fate", cost: "{2}{B}", type: "Instant", text: "Draw two cards, then mill two cards. You lose 1 life." },
+      { name: "Verdant Proliferation", cost: "{2}{G}", type: "Sorcery", text: "Create two 1/1 green Saproling creature tokens. If you control a Plant, create three instead." },
+      { name: "Glimpse the Abyss", cost: "{2}{B}", type: "Sorcery", text: "Draw a card. Then you may mill two cards. If you do, you gain 2 life." },
+      { name: "Digestive Torpor", cost: "{1}{B}{G}", type: "Instant", text: "Destroy target creature or planeswalker. If you control an Ooze, you gain 2 life." },
+      { name: "Unearth the Fallen", cost: "{3}{B}", type: "Sorcery", text: "Return up to two target creature cards with total mana value 4 or less from your graveyard to your hand." },
+      { name: "Kurotsuta's Grasp", cost: "{2}{B}{G}", type: "Sorcery", text: "Destroy target nonland permanent. If it was a creature, put a +1/+1 counter on up to one target creature you control." },
+      { name: "Bountiful Harvest", cost: "{2}{B}{G}", type: "Sorcery", text: "Draw cards equal to the greatest toughness among creatures you control, then discard two cards." },
+
+      // Enchantments & Artifacts (10)
+      { name: "Magatama of Decay", cost: "{2}", type: "Artifact", text: "Whenever a creature you control dies, you may pay {1}. If you do, put a +1/+1 counter on target creature you control." },
+      { name: "Mantle of Mycelia", cost: "{1}{G}", type: "Enchantment", text: "At the beginning of your end step, if a creature died this turn, you may put a +1/+1 counter on target creature you control." },
+      { name: "Fertile Mulch", cost: "{2}{B}", type: "Enchantment", text: "Whenever a creature card is put into your graveyard from anywhere, add {B} or {G}. This mana can only be used to cast creature spells." },
+      { name: "Pulse of the Mire", cost: "{1}{B}{G}", type: "Enchantment", text: "At the beginning of your end step, if a creature died this turn, you may put a +1/+1 counter on target Ooze you control." },
+      { name: "Yoroi Carapace", cost: "{2}{G}", type: "Artifact — Equipment", text: "Equipped creature gets +1/+1 and has reach.\nEquip {1}{G}" },
+      { name: "Nursery of Spores", cost: "{2}{G}", type: "Enchantment", text: "At the beginning of your end step, create a 1/1 green Saproling creature token." },
+      { name: "Veil of Kudzu", cost: "{2}{G}", type: "Enchantment", text: "{2}{G}: Target creature you control gains hexproof until end of turn." },
+      { name: "Symbiotic Mycelium", cost: "{2}{G}", type: "Enchantment", text: "Whenever one or more +1/+1 counters are put on a creature you control, draw a card. This ability triggers only once each turn." },
+      { name: "Altar of Silk and Bone", cost: "{2}{B}", type: "Enchantment", text: "Whenever a nontoken creature you control dies, you may pay {1}. If you do, draw a card and lose 1 life." },
+      { name: "Caged Amber", cost: "{3}", type: "Artifact", text: "{T}: Add {B} or {G}.\n{2}, {T}: Put a +1/+1 counter on target creature you control. Activate only as a sorcery." },
+
+      // Custom Lands (6)
+      { name: "Jukai Heartwood", cost: "", type: "Legendary Land", isLand: true, text: "{T}: Add {B} or {G}.\n{1}, {T}: You gain 1 life." },
+      { name: "Shrine of Kurotsuta", cost: "", type: "Legendary Land", isLand: true, text: "{T}: Add {G}.\n{T}: Add {B}. Activate only if you control a Plant or Ooze." },
+      { name: "Jorō's Sanctuary", cost: "", type: "Legendary Land", isLand: true, text: "{T}: Add {B}.\nWhen Jorō's Sanctuary enters, you may mill two cards." },
+      { name: "Sunken Torii Path", cost: "", type: "Land", isLand: true, text: "{T}: Add {B} or {G}.\nSunken Torii Path enters tapped." },
+      { name: "Shimeji Bog", cost: "", type: "Land", isLand: true, text: "{T}: Add {G}.\n{1}, {T}, Sacrifice Shimeji Bog: Create a 1/1 green Saproling creature token." },
+      { name: "Yomi Bog", cost: "", type: "Land", isLand: true, text: "{T}: Add {B}.\n{2}, {T}: Target player mills two cards." }
+    ];
+
+    // Add 18 Forests and 13 Swamps so total = 100 exact cards (1 + 4 + 12 + 14 + 7 + 15 + 10 + 6 + 18 + 13 = 100)
+    for (let i = 0; i < 18; i++) {
+      DECK_BLUEPRINT.push({ name: "Forest", cost: "", type: "Basic Land — Forest", isLand: true, text: "({T}: Add {G}.)" });
+    }
+    for (let i = 0; i < 13; i++) {
+      DECK_BLUEPRINT.push({ name: "Swamp", cost: "", type: "Basic Land — Swamp", isLand: true, text: "({T}: Add {B}.)" });
+    }
+
+    // Game State
+    let state = {
+      life: 40,
+      oppLife: 40,
+      commanderTax: 0,
+      emblem: 'none', // 'none', 'front', 'back'
+      cards: [],
+      selectedCardId: null,
+      browsingZone: null
+    };
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('opacity-0');
+      clearTimeout(el._timer);
+      el._timer = setTimeout(() => el.classList.add('opacity-0'), 2200);
+    }
+
+    function initDeck() {
+      let uid = 1;
+      state.cards = DECK_BLUEPRINT.map(c => ({
+        ...c,
+        id: 'card_' + (uid++),
+        zone: c.isCommander ? 'command' : 'library',
+        tapped: false,
+        plus1: 0,
+        reach: false,
+        deathtouch: false,
+        isToken: false
+      }));
+      shuffleLibrary(true);
+    }
+
+    function shuffleLibrary(silent = false) {
+      const lib = state.cards.filter(c => c.zone === 'library');
+      const others = state.cards.filter(c => c.zone !== 'library');
+      for (let i = lib.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [lib[i], lib[j]] = [lib[j], lib[i]];
+      }
+      state.cards = [...others, ...lib];
+      if (!silent) showToast("Library shuffled!");
+      render();
+    }
+
+    function newGame() {
+      state.life = 40;
+      state.oppLife = 40;
+      state.commanderTax = 0;
+      initDeck();
+      drawCards(7, true);
+      showToast("New 1v1 game started — drew 7 cards!");
+    }
+
+    function mulligan() {
+      state.cards.forEach(c => {
+        if (!c.isToken && c.zone !== 'command') {
+          c.zone = 'library';
+          c.tapped = false;
+          c.plus1 = 0;
+          c.reach = false;
+          c.deathtouch = false;
+        }
+      });
+      state.cards = state.cards.filter(c => !c.isToken);
+      shuffleLibrary(true);
+      drawCards(7, true);
+      showToast("Mulliganed — shuffled & drew 7!");
+    }
+
+    function drawCards(count, silent = false) {
+      let drawn = 0;
+      for (let i = 0; i < count; i++) {
+        const top = state.cards.find(c => c.zone === 'library');
+        if (top) {
+          top.zone = 'hand';
+          drawn++;
+        }
+      }
+      if (!silent) showToast(drawn ? `Drew ${drawn} card${drawn > 1 ? 's' : ''}` : "Library is empty!");
+      render();
+    }
+
+    function changeLife(who, delta) {
+      if (who === 'opp') {
+        state.oppLife += delta;
+      } else {
+        state.life += delta;
+      }
+      render();
+    }
+
+    function millCards(count) {
+      let milled = [];
+      for (let i = 0; i < count; i++) {
+        const top = state.cards.find(c => c.zone === 'library');
+        if (top) {
+          top.zone = 'graveyard';
+          milled.push(top.name);
+        }
+      }
+      showToast(milled.length ? `Milled: ${milled.join(', ')}` : "Library is empty!");
+      render();
+    }
+
+    function untapAll() {
+      state.cards.forEach(c => {
+        if (c.zone === 'battlefield') c.tapped = false;
+      });
+      showToast("Untapped all permanents");
+      render();
+    }
+
+    function moveCard(cardId, targetZone) {
+      const card = state.cards.find(c => c.id === cardId);
+      if (!card) return;
+
+      const prevZone = card.zone;
+
+      // Tokens vanish when leaving battlefield
+      if (card.isToken && targetZone !== 'battlefield') {
+        state.cards = state.cards.filter(c => c.id !== cardId);
+        closeModal('card-modal');
+        showToast(`${card.name} ceased to exist`);
+        render();
+        return;
+      }
+
+      // Commander tax tracking when cast from command zone
+      if (card.isCommander && prevZone === 'command' && targetZone === 'battlefield') {
+        state.commanderTax += 2;
+      }
+
+      card.zone = targetZone;
+      card.tapped = false;
+
+      if (targetZone === 'battlefield') {
+        card.plus1 = card.defaultCounters || 0;
+        // Toxic Spores front emblem: creatures enter tapped
+        if (state.emblem === 'front' && card.type.includes('Creature')) {
+          card.tapped = true;
+        }
+        // Sunken Torii Path enters tapped
+        if (card.name === 'Sunken Torii Path') {
+          card.tapped = true;
+        }
+      } else {
+        card.plus1 = 0;
+        card.reach = false;
+        card.deathtouch = false;
+      }
+
+      closeModal('card-modal');
+      if (state.browsingZone) renderBrowserList();
+      showToast(`Moved ${card.name} → ${targetZone.toUpperCase()}`);
+      render();
+    }
+
+    function toggleTap(cardId) {
+      const card = state.cards.find(c => c.id === cardId);
+      if (!card || card.zone !== 'battlefield') return;
+      card.tapped = !card.tapped;
+      render();
+    }
+
+    function spawnToken(kind) {
+      const id = 'token_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+      let tokenObj = null;
+
+      if (kind === 'ooze') {
+        const counters = parseInt(document.getElementById('ooze-token-counters').value, 10) || 1;
+        tokenObj = {
+          id,
+          name: "Ooze Plant Token",
+          cost: "",
+          type: "Creature Token — Ooze Plant",
+          pt: "0/0",
+          text: "Created by Kurotsuta, Core of Decay.",
+          zone: 'battlefield',
+          tapped: state.emblem === 'front',
+          plus1: counters,
+          reach: false,
+          deathtouch: false,
+          isToken: true
+        };
+      } else if (kind === 'saproling') {
+        tokenObj = {
+          id,
+          name: "Saproling Token",
+          cost: "",
+          type: "Creature Token — Saproling",
+          pt: "1/1",
+          text: "Green Saproling creature token.",
+          zone: 'battlefield',
+          tapped: state.emblem === 'front',
+          plus1: 0,
+          reach: false,
+          deathtouch: false,
+          isToken: true
+        };
+      } else if (kind === 'spider') {
+        tokenObj = {
+          id,
+          name: "Spider Token",
+          cost: "",
+          type: "Creature Token — Spider",
+          pt: "1/2",
+          text: "Reach",
+          zone: 'battlefield',
+          tapped: state.emblem === 'front',
+          plus1: 0,
+          reach: false,
+          deathtouch: false,
+          isToken: true
+        };
+      }
+
+      if (tokenObj) {
+        state.cards.push(tokenObj);
+        closeModal('token-modal');
+        showToast(`Spawned ${tokenObj.name}`);
+        render();
+      }
+    }
+
+    function openCardModal(cardId) {
+      const card = state.cards.find(c => c.id === cardId);
+      if (!card) return;
+      state.selectedCardId = cardId;
+
+      document.getElementById('modal-zone-tag').textContent = card.zone.toUpperCase();
+      document.getElementById('modal-card-name').textContent = card.name;
+      document.getElementById('modal-card-type').textContent = card.type;
+      document.getElementById('modal-card-cost').textContent = card.cost || 'Land / Token';
+      document.getElementById('modal-card-cost').classList.toggle('hidden', !card.cost);
+      document.getElementById('modal-card-text').textContent = card.text;
+
+      // Display live P/T
+      const ptEl = document.getElementById('modal-card-pt');
+      if (card.pt) {
+        const [p, t] = card.pt.split('/').map(Number);
+        const modT = (state.emblem === 'front' && card.zone === 'battlefield' && card.type.includes('Creature')) ? -1 : 0;
+        ptEl.textContent = `${p + card.plus1}/${t + card.plus1 + modT}`;
+      } else {
+        ptEl.textContent = '';
+      }
+
+      // Counters Box
+      const countersBox = document.getElementById('modal-counters-box');
+      if (card.zone === 'battlefield' && !card.isLand) {
+        countersBox.classList.remove('hidden');
+        document.getElementById('modal-plus1-val').textContent = card.plus1;
+
+        const rBtn = document.getElementById('btn-reach-counter');
+        rBtn.className = card.reach
+          ? "px-2.5 py-1 rounded-lg text-xs font-bold border bg-emerald-700 border-emerald-400 text-white"
+          : "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-slate-800 border-slate-600 text-slate-300";
+
+        const dBtn = document.getElementById('btn-deathtouch-counter');
+        dBtn.className = card.deathtouch
+          ? "px-2.5 py-1 rounded-lg text-xs font-bold border bg-purple-700 border-purple-400 text-white"
+          : "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-slate-800 border-slate-600 text-slate-300";
+      } else {
+        countersBox.classList.add('hidden');
+      }
+
+      // Action Buttons
+      const actions = document.getElementById('modal-actions');
+      actions.innerHTML = '';
+
+      const addBtn = (label, cls, fn) => {
+        const b = document.createElement('button');
+        b.className = `py-2 px-3 rounded-xl font-bold text-xs transition active:scale-95 ${cls}`;
+        b.textContent = label;
+        b.onclick = fn;
+        actions.appendChild(b);
+      };
+
+      if (card.zone === 'hand') {
+        const isSpell = card.type.startsWith('Instant') || card.type.startsWith('Sorcery');
+        if (isSpell) {
+          addBtn('Cast → Graveyard', 'col-span-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950', () => moveCard(card.id, 'graveyard'));
+        } else {
+          addBtn('Play to Battlefield', 'col-span-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950', () => moveCard(card.id, 'battlefield'));
+        }
+        addBtn('Discard (Graveyard)', 'bg-amber-900/70 hover:bg-amber-800 text-amber-100', () => moveCard(card.id, 'graveyard'));
+        addBtn('Exile', 'bg-purple-900/70 hover:bg-purple-800 text-purple-100', () => moveCard(card.id, 'exile'));
+      } else if (card.zone === 'command') {
+        addBtn('Cast Commander', 'col-span-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950', () => moveCard(card.id, 'battlefield'));
+      } else if (card.zone === 'battlefield') {
+        addBtn(card.tapped ? 'Untap' : 'Tap', 'bg-amber-600 hover:bg-amber-500 text-slate-950', () => { toggleTap(card.id); openCardModal(card.id); });
+        addBtn(card.isToken ? 'Destroy Token' : 'Send to Graveyard', 'bg-rose-800 hover:bg-rose-700 text-white', () => moveCard(card.id, 'graveyard'));
+        addBtn('Return to Hand', 'bg-slate-700 hover:bg-slate-600 text-white', () => moveCard(card.id, 'hand'));
+        if (card.isCommander) {
+          addBtn('Command Zone', 'bg-emerald-900 hover:bg-emerald-800 text-emerald-100', () => moveCard(card.id, 'command'));
+        } else {
+          addBtn('Exile', 'bg-purple-900/80 hover:bg-purple-800 text-purple-100', () => moveCard(card.id, 'exile'));
+        }
+      } else {
+        // From graveyard / exile / library
+        addBtn('Put to Hand', 'bg-emerald-600 hover:bg-emerald-500 text-slate-950', () => moveCard(card.id, 'hand'));
+        addBtn('Put to Battlefield', 'bg-teal-600 hover:bg-teal-500 text-slate-950', () => moveCard(card.id, 'battlefield'));
+        if (card.zone !== 'graveyard') addBtn('Graveyard', 'bg-amber-900/80 text-amber-100', () => moveCard(card.id, 'graveyard'));
+        if (card.isCommander) addBtn('Command Zone', 'bg-emerald-900 text-emerald-100', () => moveCard(card.id, 'command'));
+      }
+
+      document.getElementById('card-modal').classList.remove('hidden');
+      document.getElementById('card-modal').classList.add('flex');
+    }
+
+    function adjustCounter(type, delta) {
+      const card = state.cards.find(c => c.id === state.selectedCardId);
+      if (!card) return;
+      card.plus1 = Math.max(0, card.plus1 + delta);
+      openCardModal(card.id);
+      render();
+    }
+
+    function toggleKeywordCounter(kw) {
+      const card = state.cards.find(c => c.id === state.selectedCardId);
+      if (!card) return;
+      card[kw] = !card[kw];
+      openCardModal(card.id);
+      render();
+    }
+
+    function openTokenModal() {
+      document.getElementById('token-modal').classList.remove('hidden');
+      document.getElementById('token-modal').classList.add('flex');
+    }
+
+    function toggleEmblemModal() {
+      document.getElementById('emblem-modal').classList.remove('hidden');
+      document.getElementById('emblem-modal').classList.add('flex');
+    }
+
+    function setEmblem(mode) {
+      state.emblem = mode;
+      closeModal('emblem-modal');
+      render();
+    }
+
+    function openZoneBrowser(zone) {
+      state.browsingZone = zone;
+      document.getElementById('browser-search').value = '';
+      const titles = { library: 'Search Library', graveyard: 'Graveyard', exile: 'Exile Zone' };
+      document.getElementById('browser-title').textContent = titles[zone] || zone;
+      renderBrowserList();
+      document.getElementById('browser-modal').classList.remove('hidden');
+      document.getElementById('browser-modal').classList.add('flex');
+    }
+
+    function renderBrowserList() {
+      const q = document.getElementById('browser-search').value.toLowerCase();
+      const list = document.getElementById('browser-list');
+      const cards = state.cards.filter(c => c.zone === state.browsingZone && (c.name.toLowerCase().includes(q) || c.type.toLowerCase().includes(q)));
+
+      if (!cards.length) {
+        list.innerHTML = `<p class="text-xs text-slate-500 italic py-6 text-center">No cards found in this zone.</p>`;
+        return;
+      }
+
+      list.innerHTML = cards.map(c => `
+        <div onclick="closeModal('browser-modal'); openCardModal('${c.id}')" class="flex items-center justify-between p-2.5 rounded-xl bg-[#0e1410] hover:bg-[#1a241d] border border-slate-800 cursor-pointer transition">
+          <div>
+            <div class="text-xs font-bold text-white">${c.name}</div>
+            <div class="text-[11px] text-slate-400">${c.type} ${c.pt ? `(${c.pt})` : ''}</div>
+          </div>
+          <span class="text-[11px] font-semibold text-amber-300 bg-slate-800 px-2 py-0.5 rounded">${c.cost || 'Land'}</span>
+        </div>
+      `).join('');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+      document.getElementById(id).classList.remove('flex');
+      if (id === 'browser-modal') state.browsingZone = null;
+    }
+
+    function closeModalOnBackdrop(e, id) {
+      if (e.target.id === id) closeModal(id);
+    }
+
+    function calculateDevotion() {
+      let g = 0, b = 0;
+      state.cards.forEach(c => {
+        if (c.zone === 'battlefield' && !c.isToken && c.cost) {
+          const gMatches = c.cost.match(/\{G\}/g);
+          const bMatches = c.cost.match(/\{B\}/g);
+          if (gMatches) g += gMatches.length;
+          if (bMatches) b += bMatches.length;
+        }
+      });
+      return { g, b };
+    }
+
+    function render() {
+      document.getElementById('life-total').textContent = state.life;
+      document.getElementById('opp-life-total').textContent = state.oppLife;
+      document.getElementById('cmd-tax').textContent = state.commanderTax;
+
+      // Devotion
+      const dev = calculateDevotion();
+      document.getElementById('devotion-g').textContent = dev.g;
+      document.getElementById('devotion-b').textContent = dev.b;
+
+      // Emblem UI
+      const badge = document.getElementById('emblem-badge');
+      const bar = document.getElementById('active-emblem-bar');
+      const handLimitEl = document.getElementById('hand-limit-display');
+
+      if (state.emblem === 'none') {
+        badge.textContent = 'None';
+        bar.classList.add('hidden');
+        handLimitEl.textContent = '';
+      } else if (state.emblem === 'front') {
+        badge.textContent = 'Toxic Spores';
+        bar.classList.remove('hidden');
+        document.getElementById('emblem-bar-title').textContent = 'FRONT: Toxic Spores';
+        document.getElementById('emblem-bar-text').textContent = 'Creatures enter tapped & get -0/-1. Upkeep: Lose 2 life unless you sacrifice a nontoken creature (if you do, opponents lose 1 life & you draw 1).';
+        handLimitEl.textContent = '';
+      } else {
+        badge.textContent = 'Fungal Bloom';
+        bar.classList.remove('hidden');
+        document.getElementById('emblem-bar-title').textContent = 'BACK: Fungal Bloom';
+        document.getElementById('emblem-bar-text').textContent = 'Whenever 1+ creatures you control die, put a +1/+1 counter on up to one target creature. Max hand size is 5.';
+        handLimitEl.textContent = ' / Max 5';
+      }
+
+      // Counts
+      document.getElementById('library-count').textContent = state.cards.filter(c => c.zone === 'library').length;
+      document.getElementById('graveyard-count').textContent = state.cards.filter(c => c.zone === 'graveyard').length;
+      document.getElementById('exile-count').textContent = state.cards.filter(c => c.zone === 'exile').length;
+
+      // Command Zone
+      const cmdCards = state.cards.filter(c => c.zone === 'command');
+      const cmdContainer = document.getElementById('command-zone-list');
+      cmdContainer.innerHTML = cmdCards.length ? cmdCards.map(c => `
+        <div onclick="openCardModal('${c.id}')" class="p-2.5 rounded-xl bg-gradient-to-br from-emerald-950/90 to-[#16221a] border border-emerald-600/70 cursor-pointer hover:border-emerald-400 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-extrabold text-emerald-300">${c.name}</span>
+            <span class="text-[11px] font-bold text-amber-300">${c.cost}</span>
+          </div>
+          <div class="text-[10px] text-slate-300 mt-0.5">${c.type} • ${c.pt}</div>
+        </div>
+      `).join('') : `<p class="text-[11px] text-slate-500 italic">Commander is on the battlefield</p>`;
+
+      // Battlefield Permanents (non-land)
+      const perms = state.cards.filter(c => c.zone === 'battlefield' && !c.isLand);
+      const permEl = document.getElementById('battlefield-permanents');
+      if (!perms.length) {
+        permEl.innerHTML = `<p class="text-xs text-slate-500 italic p-4">Your battlefield is empty. Play cards from your hand below!</p>`;
+      } else {
+        permEl.innerHTML = perms.map(c => {
+          let ptBadge = '';
+          if (c.pt) {
+            const [p, t] = c.pt.split('/').map(Number);
+            const modT = (state.emblem === 'front' && c.type.includes('Creature')) ? -1 : 0;
+            const liveP = p + c.plus1;
+            const liveT = t + c.plus1 + modT;
+            ptBadge = `<span class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-[11px] font-extrabold ${c.plus1 > 0 ? 'text-emerald-300' : 'text-white'}">${liveP}/${liveT}</span>`;
+          }
+
+          return `
+            <div onclick="toggleTap('${c.id}')" class="w-40 rounded-xl p-2.5 bg-[#17221b] border ${c.isCommander ? 'border-emerald-500' : 'border-slate-700'} shadow-md cursor-pointer transition-transform duration-150 ${c.tapped ? 'tapped opacity-75' : 'hover:border-emerald-400'}">
+              <div class="flex items-start justify-between gap-1">
+                <span class="text-xs font-bold text-white leading-tight line-clamp-2">${c.name}</span>
+              </div>
+              <div class="text-[10px] text-slate-400 truncate mt-0.5">${c.type.replace('Creature — ', '').replace('Legendary ', '')}</div>
+              <div class="flex flex-wrap gap-1 mt-1.5 min-h-[18px]">
+                ${c.plus1 > 0 ? `<span class="text-[10px] font-bold bg-emerald-800/90 text-emerald-100 px-1.5 py-0.2 rounded-full">+${c.plus1}/+${c.plus1}</span>` : ''}
+                ${c.reach ? `<span class="text-[10px] font-bold bg-sky-900 text-sky-200 px-1.5 rounded-full">Reach</span>` : ''}
+                ${c.deathtouch ? `<span class="text-[10px] font-bold bg-purple-900 text-purple-200 px-1.5 rounded-full">Deathtouch</span>` : ''}
+              </div>
+              <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-800">
+                <button onclick="event.stopPropagation(); openCardModal('${c.id}')" class="text-[10px] font-semibold text-emerald-400 hover:underline">
+                  Inspect / +1
+                </button>
+                ${ptBadge}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Battlefield Lands
+      const lands = state.cards.filter(c => c.zone === 'battlefield' && c.isLand);
+      document.getElementById('land-count').textContent = lands.length;
+      const landEl = document.getElementById('battlefield-lands');
+      landEl.innerHTML = lands.map(c => {
+        const isForest = c.name === 'Forest';
+        const isSwamp = c.name === 'Swamp';
+        const colorCls = isForest ? 'border-emerald-700/80 bg-emerald-950/40 text-emerald-200'
+                       : isSwamp ? 'border-purple-800/80 bg-purple-950/40 text-purple-200'
+                       : 'border-amber-700/80 bg-amber-950/30 text-amber-200';
+        return `
+          <div onclick="toggleTap('${c.id}')" class="px-2.5 py-2 rounded-xl border ${colorCls} text-xs font-bold cursor-pointer flex items-center gap-2 transition-transform ${c.tapped ? 'rotate-12 opacity-55' : 'hover:brightness-110'}">
+            <span>${c.name}</span>
+            <button onclick="event.stopPropagation(); openCardModal('${c.id}')" class="text-[10px] opacity-70 hover:opacity-100 underline">•••</button>
+          </div>
+        `;
+      }).join('');
+
+      // Hand
+      const hand = state.cards.filter(c => c.zone === 'hand');
+      document.getElementById('hand-count').textContent = hand.length;
+      const handEl = document.getElementById('hand-zone');
+      handEl.innerHTML = hand.length ? hand.map(c => `
+        <div onclick="openCardModal('${c.id}')" class="w-40 shrink-0 rounded-xl p-2.5 bg-[#1b261f] hover:bg-[#223027] border border-slate-700 hover:border-emerald-400 cursor-pointer flex flex-col justify-between transition">
+          <div>
+            <div class="flex items-start justify-between gap-1">
+              <span class="text-xs font-bold text-white leading-tight">${c.name}</span>
+              <span class="text-[10px] font-bold text-amber-300 shrink-0">${c.cost}</span>
+            </div>
+            <div class="text-[10px] text-emerald-300/80 mt-0.5 truncate">${c.type}</div>
+            <p class="text-[10px] text-slate-300 mt-1.5 line-clamp-4 leading-snug">${c.text}</p>
+          </div>
+          <div class="flex items-center justify-between mt-2 pt-1 border-t border-slate-800/80 text-[10px] text-slate-400">
+            <span>Tap to play</span>
+            ${c.pt ? `<span class="font-bold text-white">${c.pt}</span>` : ''}
+          </div>
+        </div>
+      `).join('') : `<p class="text-xs text-slate-500 italic p-4">Your hand is empty.</p>`;
+    }
+
+    // Initialize on load
+    window.onload = () => {
+      newGame();
+    };
+  </script>
+</body>
+</html>
