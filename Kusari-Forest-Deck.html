@@ -77,7 +77,7 @@
 
     <!-- Action Buttons -->
     <div class="flex flex-wrap items-center gap-1.5">
-      <button onclick="newGame()" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs shadow active:scale-95 transition">
+      <button id="new-game-btn" onclick="newGame()" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs shadow active:scale-95 transition">
         New Game (Draw 7)
       </button>
       <button onclick="mulligan()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs border border-slate-700 active:scale-95 transition">
@@ -328,7 +328,23 @@
   <!-- Toast Notification -->
   <div id="toast" class="fixed bottom-4 right-4 bg-emerald-900 border border-emerald-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xl opacity-0 pointer-events-none transition-opacity duration-200 z-50"></div>
 
-  <script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'kusari-forest-playmat';
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+    let db = null;
+    let auth = null;
+    let currentUser = null;
+
+    if (firebaseConfig) {
+      const app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+      auth = getAuth(app);
+    }
+
     // Complete 100-Card Custom Deck Database
     const DECK_BLUEPRINT = [
       // Commander (1)
@@ -436,6 +452,49 @@
       browsingZone: null
     };
 
+    let saveTimeout = null;
+    function saveGameState() {
+      if (!db || !currentUser) return;
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(async () => {
+        try {
+          const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'playmatState', 'activeGame');
+          await setDoc(ref, {
+            life: state.life,
+            oppLife: state.oppLife,
+            commanderTax: state.commanderTax,
+            emblem: state.emblem,
+            cardsJson: JSON.stringify(state.cards),
+            updatedAt: Date.now()
+          });
+        } catch (err) {
+          console.error("Failed to save game progress:", err);
+        }
+      }, 300);
+    }
+
+    async function loadGameState() {
+      if (!db || !currentUser) return false;
+      try {
+        const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'playmatState', 'activeGame');
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && data.cardsJson) {
+            state.life = data.life ?? 40;
+            state.oppLife = data.oppLife ?? 40;
+            state.commanderTax = data.commanderTax ?? 0;
+            state.emblem = data.emblem ?? 'none';
+            state.cards = JSON.parse(data.cardsJson);
+            return true;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load saved game:", err);
+      }
+      return false;
+    }
+
     function showToast(msg) {
       const el = document.getElementById('toast');
       el.textContent = msg;
@@ -472,15 +531,17 @@
     }
 
     function newGame() {
+      const startHandSize = state.emblem === 'back' ? 5 : 7;
       state.life = 40;
       state.oppLife = 40;
       state.commanderTax = 0;
       initDeck();
-      drawCards(7, true);
-      showToast("New 1v1 game started — drew 7 cards!");
+      drawCards(startHandSize, true);
+      showToast(`New 1v1 game started — drew ${startHandSize} cards!`);
     }
 
     function mulligan() {
+      const startHandSize = state.emblem === 'back' ? 5 : 7;
       state.cards.forEach(c => {
         if (!c.isToken && c.zone !== 'command') {
           c.zone = 'library';
@@ -492,8 +553,8 @@
       });
       state.cards = state.cards.filter(c => !c.isToken);
       shuffleLibrary(true);
-      drawCards(7, true);
-      showToast("Mulliganed — shuffled & drew 7!");
+      drawCards(startHandSize, true);
+      showToast(`Mulliganed — shuffled & drew ${startHandSize}!`);
     }
 
     function drawCards(count, silent = false) {
@@ -836,23 +897,27 @@
       const badge = document.getElementById('emblem-badge');
       const bar = document.getElementById('active-emblem-bar');
       const handLimitEl = document.getElementById('hand-limit-display');
+      const newGameBtn = document.getElementById('new-game-btn');
 
       if (state.emblem === 'none') {
         badge.textContent = 'None';
         bar.classList.add('hidden');
         handLimitEl.textContent = '';
+        newGameBtn.textContent = 'New Game (Draw 7)';
       } else if (state.emblem === 'front') {
         badge.textContent = 'Toxic Spores';
         bar.classList.remove('hidden');
         document.getElementById('emblem-bar-title').textContent = 'FRONT: Toxic Spores';
         document.getElementById('emblem-bar-text').textContent = 'Creatures enter tapped & get -0/-1. Upkeep: Lose 2 life unless you sacrifice a nontoken creature (if you do, opponents lose 1 life & you draw 1).';
         handLimitEl.textContent = '';
+        newGameBtn.textContent = 'New Game (Draw 7)';
       } else {
         badge.textContent = 'Fungal Bloom';
         bar.classList.remove('hidden');
         document.getElementById('emblem-bar-title').textContent = 'BACK: Fungal Bloom';
         document.getElementById('emblem-bar-text').textContent = 'Whenever 1+ creatures you control die, put a +1/+1 counter on up to one target creature. Max hand size is 5.';
         handLimitEl.textContent = ' / Max 5';
+        newGameBtn.textContent = 'New Game (Draw 5)';
       }
 
       // Counts
@@ -949,10 +1014,55 @@
           </div>
         </div>
       `).join('') : `<p class="text-xs text-slate-500 italic p-4">Your hand is empty.</p>`;
+
+      saveGameState();
     }
 
-    // Initialize on load
-    window.onload = () => {
+    // Expose handlers for inline HTML onclick attributes
+    Object.assign(window, {
+      newGame,
+      mulligan,
+      drawCards,
+      changeLife,
+      millCards,
+      untapAll,
+      shuffleLibrary,
+      moveCard,
+      toggleTap,
+      spawnToken,
+      openCardModal,
+      adjustCounter,
+      toggleKeywordCounter,
+      openTokenModal,
+      toggleEmblemModal,
+      setEmblem,
+      openZoneBrowser,
+      renderBrowserList,
+      closeModal,
+      closeModalOnBackdrop
+    });
+
+    // Initialize on load (restore saved session if available)
+    window.onload = async () => {
+      try {
+        if (auth) {
+          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            const cred = await signInWithCustomToken(auth, __initial_auth_token);
+            currentUser = cred.user;
+          } else {
+            const cred = await signInAnonymously(auth);
+            currentUser = cred.user;
+          }
+        }
+        const restored = await loadGameState();
+        if (restored) {
+          render();
+          showToast("Restored ongoing game!");
+          return;
+        }
+      } catch (err) {
+        console.error("Init restore error:", err);
+      }
       newGame();
     };
   </script>
