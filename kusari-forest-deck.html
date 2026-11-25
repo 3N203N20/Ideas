@@ -453,20 +453,80 @@
     };
 
     let saveTimeout = null;
+    const BROWSER_SAVE_KEY = 'kusari_forest_playmat_v1';
+
+    // IndexedDB helper for reliable browser-local persistence across reloads
+    function openPlaymatDB() {
+      return new Promise((resolve, reject) => {
+        if (!window.indexedDB) return reject(new Error("IndexedDB unavailable"));
+        const req = indexedDB.open('KusariPlaymatDB', 1);
+        req.onupgradeneeded = () => req.result.createObjectStore('saves');
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function writeBrowserSave(payload) {
+      // 1. Store in window.name (survives reloads even in strict sandboxed iframes)
+      try {
+        window.name = BROWSER_SAVE_KEY + ':' + JSON.stringify(payload);
+      } catch (e) {}
+
+      // 2. Store in IndexedDB (survives closing/reopening tabs in the browser)
+      try {
+        const idb = await openPlaymatDB();
+        await new Promise((resolve, reject) => {
+          const tx = idb.transaction('saves', 'readwrite');
+          tx.objectStore('saves').put(payload, BROWSER_SAVE_KEY);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      } catch (e) {}
+    }
+
+    async function readBrowserSave() {
+      // 1. Check window.name first (instant reload survival)
+      try {
+        if (window.name && window.name.startsWith(BROWSER_SAVE_KEY + ':')) {
+          return JSON.parse(window.name.slice(BROWSER_SAVE_KEY.length + 1));
+        }
+      } catch (e) {}
+
+      // 2. Check IndexedDB
+      try {
+        const idb = await openPlaymatDB();
+        const data = await new Promise((resolve, reject) => {
+          const tx = idb.transaction('saves', 'readonly');
+          const req = tx.objectStore('saves').get(BROWSER_SAVE_KEY);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+        if (data) return data;
+      } catch (e) {}
+
+      return null;
+    }
+
     function saveGameState() {
+      const payload = {
+        life: state.life,
+        oppLife: state.oppLife,
+        commanderTax: state.commanderTax,
+        emblem: state.emblem,
+        cardsJson: JSON.stringify(state.cards),
+        updatedAt: Date.now()
+      };
+
+      // Save immediately to browser storage
+      writeBrowserSave(payload);
+
+      // Also sync to cloud if authenticated
       if (!db || !currentUser) return;
       clearTimeout(saveTimeout);
       saveTimeout = setTimeout(async () => {
         try {
           const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'playmatState', 'activeGame');
-          await setDoc(ref, {
-            life: state.life,
-            oppLife: state.oppLife,
-            commanderTax: state.commanderTax,
-            emblem: state.emblem,
-            cardsJson: JSON.stringify(state.cards),
-            updatedAt: Date.now()
-          });
+          await setDoc(ref, payload);
         } catch (err) {
           console.error("Failed to save game progress:", err);
         }
@@ -474,6 +534,18 @@
     }
 
     async function loadGameState() {
+      // Try browser-specific save first (works offline, locally, and across reloads)
+      const browserData = await readBrowserSave();
+      if (browserData && browserData.cardsJson) {
+        state.life = browserData.life ?? 40;
+        state.oppLife = browserData.oppLife ?? 40;
+        state.commanderTax = browserData.commanderTax ?? 0;
+        state.emblem = browserData.emblem ?? 'none';
+        state.cards = JSON.parse(browserData.cardsJson);
+        return true;
+      }
+
+      // Fallback to cloud save if available
       if (!db || !currentUser) return false;
       try {
         const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'playmatState', 'activeGame');
