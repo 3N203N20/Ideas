@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kurotsuta, Core of Decay — Digital Playmat</title>
+  <title>Kusari Forest ———— Digital Playmat</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -59,18 +59,18 @@
         <button onclick="changeLife('opp', 1)" class="w-7 h-7 rounded-lg bg-emerald-900/80 hover:bg-emerald-700 text-emerald-100 font-bold text-base flex items-center justify-center active:scale-95">+</button>
       </div>
 
-      <!-- Live Devotion Tracker -->
-      <div class="hidden md:flex items-center bg-[#1a241d] border border-slate-700/70 rounded-xl px-3 py-1 gap-3 text-xs">
-        <div class="flex items-center gap-1" title="Devotion to Green (Kurotsuta gains Reach at 10+)">
-          <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
-          <span class="text-slate-300">Devotion G:</span>
-          <span id="devotion-g" class="font-bold text-emerald-400">0</span>
+      <!-- Live Combined Devotion Tracker (<6 = Not a Creature, 6+ = God Ooze Creature) -->
+      <div class="hidden md:flex items-center bg-[#1a241d] border border-slate-700/70 rounded-xl px-3 py-1 gap-2.5 text-xs" title="As long as your devotion to black and green is less than six, Kurotsuta isn't a creature.">
+        <div class="flex items-center gap-1">
+          <span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block -ml-1"></span>
+          <span class="text-slate-300 ml-0.5">Devotion (B+G):</span>
+          <span id="devotion-combined" class="font-extrabold text-emerald-400">0</span>
+          <span class="text-slate-500">/ 6</span>
         </div>
-        <div class="flex items-center gap-1" title="Devotion to Black (Kurotsuta gains Deathtouch at 10+)">
-          <span class="w-3 h-3 rounded-full bg-purple-500 inline-block"></span>
-          <span class="text-slate-300">Devotion B:</span>
-          <span id="devotion-b" class="font-bold text-purple-400">0</span>
-        </div>
+        <span id="kurotsuta-status-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+          Enchantment
+        </span>
       </div>
     </div>
 
@@ -84,6 +84,9 @@
       </button>
       <button onclick="untapAll()" class="px-2.5 py-1.5 rounded-xl bg-amber-600/90 hover:bg-amber-500 text-slate-950 font-bold text-xs active:scale-95 transition">
         Untap All
+      </button>
+      <button onclick="doubleAllCounters()" class="px-2.5 py-1.5 rounded-xl bg-lime-900/80 hover:bg-lime-800 text-lime-200 font-bold text-xs border border-lime-700/70 active:scale-95 transition" title="Kurotsuta's {3}{B}{G} ability: Double the number of +1/+1 counters on each creature you control">
+        ×2 Counters
       </button>
       <button onclick="openTokenModal()" class="px-2.5 py-1.5 rounded-xl bg-teal-900/80 hover:bg-teal-800 text-teal-100 font-semibold text-xs border border-teal-700/70 active:scale-95 transition">
         + Token
@@ -186,7 +189,7 @@
           <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-300">
             Your Hand (<span id="hand-count">0</span><span id="hand-limit-display"></span>)
           </h2>
-          <span class="text-[11px] text-slate-400">Click a card to inspect, cast, cycle, or move</span>
+          <span class="text-[11px] text-slate-400">Click a card to inspect, cast, or move</span>
         </div>
         <div id="hand-zone" class="flex gap-2.5 overflow-x-auto pb-2 min-h-[145px] items-stretch"></div>
       </div>
@@ -211,17 +214,28 @@
 
       <div class="bg-[#0e1410] border border-slate-800 rounded-xl p-3 text-xs text-slate-200 leading-relaxed whitespace-pre-line" id="modal-card-text"></div>
 
-      <!-- Counters Control (shown when on battlefield or command zone) -->
+      <!-- Counters Control (shown when on battlefield) -->
       <div id="modal-counters-box" class="bg-[#1a241d] border border-slate-700/80 rounded-xl p-3 space-y-2.5 hidden">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold text-emerald-300">+1/+1 Counters</span>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1.5">
             <button onclick="adjustCounter('plus1', -1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold">−</button>
             <span id="modal-plus1-val" class="text-sm font-extrabold text-white w-6 text-center">0</span>
             <button onclick="adjustCounter('plus1', 1)" class="w-8 h-8 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold">+</button>
+            <button onclick="doubleCardCounters()" class="px-2.5 h-8 rounded-lg bg-lime-700 hover:bg-lime-600 text-white font-extrabold text-xs ml-1" title="Double +1/+1 counters on this creature">×2</button>
           </div>
         </div>
-        <div class="flex flex-wrap gap-2 pt-1 border-t border-slate-700/60">
+
+        <div class="flex items-center justify-between pt-2 border-t border-slate-700/60">
+          <span class="text-xs font-bold text-amber-300">Charge / Study Counters</span>
+          <div class="flex items-center gap-1.5">
+            <button onclick="adjustCounter('genericCounters', -1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold">−</button>
+            <span id="modal-generic-val" class="text-sm font-extrabold text-white w-6 text-center">0</span>
+            <button onclick="adjustCounter('genericCounters', 1)" class="w-8 h-8 rounded-lg bg-amber-700 hover:bg-amber-600 text-white font-bold">+</button>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2 pt-2 border-t border-slate-700/60">
           <button onclick="toggleKeywordCounter('reach')" id="btn-reach-counter" class="px-2.5 py-1 rounded-lg text-xs font-semibold border transition">
             + Reach Counter
           </button>
@@ -244,34 +258,50 @@
   <div id="token-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4 z-50" onclick="closeModalOnBackdrop(event, 'token-modal')">
     <div class="bg-[#151e18] border border-teal-700/70 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-3">
       <h3 class="text-base font-extrabold text-teal-300">Create Token on Battlefield</h3>
-      <p class="text-xs text-slate-400">Quick-spawn tokens generated by Kurotsuta and your forest cards:</p>
+      <p class="text-xs text-slate-400">Quick-spawn tokens generated by Kurotsuta and the 4 ecosystem links:</p>
 
       <div class="space-y-2">
         <div class="bg-[#0e1410] border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-2">
           <div>
-            <p class="text-xs font-bold text-emerald-300">Ooze Plant Token (0/0)</p>
-            <p class="text-[11px] text-slate-400">From Kurotsuta's death split trigger</p>
+            <p class="text-xs font-bold text-emerald-300">0/0 Green Ooze Token</p>
+            <p class="text-[11px] text-slate-400">Enters with chosen +1/+1 counters</p>
           </div>
           <div class="flex items-center gap-1.5">
-            <input id="ooze-token-counters" type="number" min="1" max="20" value="2" class="w-12 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white text-center" title="+1/+1 counters" />
+            <input id="ooze-token-counters" type="number" min="1" max="50" value="2" class="w-12 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white text-center" title="+1/+1 counters" />
             <button onclick="spawnToken('ooze')" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs">Spawn</button>
           </div>
         </div>
 
-        <button onclick="spawnToken('saproling')" class="w-full bg-[#0e1410] hover:bg-[#19241c] border border-slate-800 rounded-xl p-3 flex items-center justify-between text-left transition">
+        <button onclick="spawnToken('insect_dt')" class="w-full bg-[#0e1410] hover:bg-[#19241c] border border-slate-800 rounded-xl p-3 flex items-center justify-between text-left transition">
           <div>
-            <p class="text-xs font-bold text-lime-300">1/1 Green Saproling Token</p>
-            <p class="text-[11px] text-slate-400">Creature Token — Saproling</p>
+            <p class="text-xs font-bold text-purple-300">1/1 Black Insect Token (Deathtouch)</p>
+            <p class="text-[11px] text-slate-400">Deathtouch (Kōchū-Ō, Loom, Harvest, etc.)</p>
           </div>
-          <span class="px-3 py-1 rounded-lg bg-lime-700 text-white font-bold text-xs">+1</span>
+          <span class="px-3 py-1 rounded-lg bg-purple-700 text-white font-bold text-xs">+1</span>
+        </button>
+
+        <button onclick="spawnToken('insect')" class="w-full bg-[#0e1410] hover:bg-[#19241c] border border-slate-800 rounded-xl p-3 flex items-center justify-between text-left transition">
+          <div>
+            <p class="text-xs font-bold text-slate-200">1/1 Black Insect Token</p>
+            <p class="text-[11px] text-slate-400">Creature Token — Insect (Brood-Mother Mantis)</p>
+          </div>
+          <span class="px-3 py-1 rounded-lg bg-slate-700 text-white font-bold text-xs">+1</span>
         </button>
 
         <button onclick="spawnToken('spider')" class="w-full bg-[#0e1410] hover:bg-[#19241c] border border-slate-800 rounded-xl p-3 flex items-center justify-between text-left transition">
           <div>
             <p class="text-xs font-bold text-amber-300">1/2 Green Spider Token</p>
-            <p class="text-[11px] text-slate-400">Reach (from Dōkutsu Broodmother)</p>
+            <p class="text-[11px] text-slate-400">Reach (Jorō-Hime, Brood-Web Matriarch)</p>
           </div>
           <span class="px-3 py-1 rounded-lg bg-amber-700 text-white font-bold text-xs">+1</span>
+        </button>
+
+        <button onclick="spawnToken('plant')" class="w-full bg-[#0e1410] hover:bg-[#19241c] border border-slate-800 rounded-xl p-3 flex items-center justify-between text-left transition">
+          <div>
+            <p class="text-xs font-bold text-lime-300">0/1 Green Plant Token</p>
+            <p class="text-[11px] text-slate-400">Creature Token — Plant (Moss-Skin Bloomkeeper)</p>
+          </div>
+          <span class="px-3 py-1 rounded-lg bg-lime-700 text-white font-bold text-xs">+1</span>
         </button>
       </div>
 
@@ -344,96 +374,97 @@
       auth = getAuth(app);
     }
 
-    // Complete 100-Card Custom Deck Database
+    // Complete 100-Card Custom Deck Database (Updated Decklist)
     const DECK_BLUEPRINT = [
-      // Commander (1)
-      { name: "Kurotsuta, Core of Decay", cost: "{2}{B}{G}", type: "Legendary Creature — Ooze Plant", pt: "3/5", isCommander: true, text: "Whenever your devotion to green becomes 10 or greater, if Kurotsuta, Core of Decay doesn't have a reach counter on it, put a reach counter on it.\nWhenever your devotion to black becomes 10 or greater, if Kurotsuta, Core of Decay doesn't have a deathtouch counter on it, put a deathtouch counter on it.\nWhenever a creature you control with one or more +1/+1 counters on it dies, create a 0/0 green Ooze Plant creature token with that many +1/+1 counters on it, minus one." },
+      // 1. Command Structure (1 Commander + 4 Generals = 5)
+      { name: "Kurotsuta, Core of Decay", cost: "{2}{B}{G}", type: "Legendary Enchantment Creature — God Ooze", pt: "5/5", isCommander: true, text: "Indestructible, reach, deathtouch.\nAs long as your devotion to black and green is less than six, Kurotsuta isn't a creature.\n{3}{B}{G}: Double the number of +1/+1 counters on each creature you control.\n• Whenever a nontoken creature you control with one or more +1/+1 counters on it dies, create a 0/0 green Ooze creature token that enters with that many +1/+1 counters on it." },
+      { name: "Kusunoki, Canopy Bastion", cost: "{4}{G}{G}", type: "Legendary Creature — Plant Elemental", pt: "3/7", text: "Reach, trample.\nWhenever Kusunoki, Canopy Bastion deals combat damage to a player, put that many +1/+1 counters on target creature you control." },
+      { name: "Kōchū-Ō, Sovereign of Husk", cost: "{3}{B}{B}", type: "Legendary Creature — Insect Horror", pt: "4/4", text: "Deathtouch, menace.\nWhenever a nontoken creature you control dies, mill two cards.\n{B}, Exile a creature from a graveyard: Put a +1/+1 counter on target creature you control, then create a 1/1 black Insect token with deathtouch." },
+      { name: "Nuregami, the Primeval Gel", cost: "{3}{G}{G}", type: "Legendary Creature — Ooze", pt: "0/0", defaultCounters: 5, text: "Trample. Nuregami enters with five +1/+1 counters on it.\nWhenever another nontoken creature you control with one or more +1/+1 counters on it dies, create a copy of Nuregami, except it’s not legendary and put half those +1/+1 counters, rounded up, on it.\n{1}{G}, Remove a +1/+1 counter from this creature: You can play a permanent card from exile this turn." },
+      { name: "Jorō-Hime, Weaver of Sighs", cost: "{2}{B}{G}", type: "Legendary Creature — Spider", pt: "2/5", text: "Reach, deathtouch.\nWhenever one or more +1/+1 counters are put on a creature you control for the first time each turn, each opponent loses 1 life and you gain 1 life. If that creature is a Spider, each opponent loses 2 life and you gain 2 life instead.\nWhenever a nontoken creature dies, you may pay {1}. If you do, create a 1/2 green Spider creature token with reach." },
 
-      // The Four Generals (4)
-      { name: "Nuregami, the Primeval Gel", cost: "{3}{G}{G}", type: "Legendary Creature — Ooze", pt: "0/0", defaultCounters: 5, text: "Nuregami, the Primeval Gel enters with five +1/+1 counters on it.\nWhenever another creature you control dies, put a +1/+1 counter on Nuregami, the Primeval Gel. (Triggers once each turn.)" },
-      { name: "Kusunoki, Canopy Bastion", cost: "{4}{G}{G}", type: "Legendary Creature — Plant Elemental", pt: "2/7", text: "Whenever Kusunoki, Canopy Bastion blocks, choose one —\n• Put a +1/+1 counter on target creature you control.\n• Create a 1/1 green Saproling creature token." },
-      { name: "Jorō-Hime, Weaver of Sighs", cost: "{2}{B}{G}", type: "Legendary Creature — Spider", pt: "2/5", text: "Reach, deathtouch\nWhenever one or more +1/+1 counters are put on a creature you control, each opponent loses 1 life and you gain 1 life. (Triggers once each turn.)" },
-      { name: "Kōchū-Ō, Sovereign of Husk", cost: "{3}{B}{B}", type: "Legendary Creature — Insect Horror", pt: "4/4", text: "Menace\n{1}{B}, Exile a creature card from your graveyard: Put two +1/+1 counters on target creature you control. Activate only as a sorcery." },
+      // 2. Link 1: Plants — Soil, Ramp & Counter Seeders (8 Cards)
+      { name: "Sproutling Tender", cost: "{G}", type: "Creature — Plant", pt: "1/1", text: "Sproutling Tender enters the battlefield tapped.\n{T}: Add {G}.\n{2}, {T}: Put a +1/+1 counter on each of up to two target creatures you control." },
+      { name: "Spore-Seed Sapling", cost: "{G}", type: "Creature — Plant", pt: "1/1", text: "When Spore-Seed Sapling enters the battlefield, put a +1/+1 counter on target creature you control." },
+      { name: "Vinesoul Cultivator", cost: "{1}{G}", type: "Creature — Plant Shaman", pt: "2/2", text: "When Vinesoul Cultivator enters the battlefield, search your library for a basic land card, reveal it, put it into your hand, then shuffle.\n{G}, {T}: Put a +1/+1 counter on target creature you control. Activate only as a sorcery." },
+      { name: "Briar-Hide Druid", cost: "{1}{G}", type: "Creature — Plant Druid", pt: "1/3", text: "{T}: Add {B} or {G}.\nWhenever a +1/+1 counter is put on a creature you control for the first time each turn, add {B} or {G}. Until end of turn, you don't lose this mana as steps and phases end." },
+      { name: "Bramblewood Pod", cost: "{2}{G}", type: "Creature — Plant Horror", pt: "3/3", text: "Trample.\n{G}, Sacrifice Bramblewood Pod: Put two +1/+1 counters on target creature you control and gain 2 life." },
+      { name: "Moss-Skin Bloomkeeper", cost: "{2}{G}", type: "Creature — Plant", pt: "2/3", text: "Whenever another Plant you control enters the battlefield, put a +1/+1 counter on Moss-Skin Bloomkeeper.\nWhen Moss-Skin Bloomkeeper dies, create that many 0/1 green Plant creature tokens." },
+      { name: "Canopy Strangleroot", cost: "{2}{G}{G}", type: "Creature — Plant Elemental", pt: "4/4", text: "Trample.\nWhenever another nontoken Plant you control dies, put a +1/+1 counter on Canopy Strangleroot.\n{2}{G}, Sacrifice a Plant creature: Canopy Strangleroot fights target creature an opponent controls." },
+      { name: "Verdant Goliath", cost: "{3}{G}{G}", type: "Creature — Plant", pt: "5/5", text: "Reach.\nWhen Verdant Goliath enters the battlefield, double the number of +1/+1 counters on target creature you control." },
 
-      // Creatures 1-2 Mana (12)
-      { name: "Kinoko Sapling", cost: "{G}", type: "Creature — Plant", pt: "0/2", text: "Defender\n{T}: Add {G} or {B}." },
-      { name: "Sanguine Hiru", cost: "{B}", type: "Creature — Insect", pt: "1/1", text: "Deathtouch\nWhen Sanguine Hiru dies, you gain 2 life." },
-      { name: "Nectar-Bud Kodama", cost: "{G}", type: "Creature — Plant", pt: "0/1", text: "Sacrifice Nectar-Bud Kodama: Put a +1/+1 counter on target creature you control. Activate only as a sorcery." },
-      { name: "Koke-Mushi Skitterer", cost: "{G}", type: "Creature — Insect", pt: "1/1", text: "When Koke-Mushi Skitterer enters, you may put a +1/+1 counter on target creature you control." },
-      { name: "Ash-Mire Leech", cost: "{B}", type: "Creature — Insect", pt: "1/1", text: "Deathtouch\nWhen Ash-Mire Leech dies, mill a card." },
-      { name: "Barkskin Kabuto", cost: "{1}{G}", type: "Creature — Insect", pt: "2/3", text: "When Barkskin Kabuto dies, put a +1/+1 counter on target creature you control." },
-      { name: "Kuro-Kumo Ambush", cost: "{G}{G}", type: "Creature — Spider", pt: "1/3", text: "Reach, deathtouch" },
-      { name: "Carrion Gnawer", cost: "{1}{B}", type: "Creature — Insect", pt: "2/2", text: "When Carrion Gnawer dies, each opponent loses 1 life and you gain 1 life." },
-      { name: "Inky Amalgam", cost: "{B}{B}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 2, text: "Enters with two +1/+1 counters on it." },
-      { name: "Kazura Strangler", cost: "{1}{G}", type: "Creature — Plant", pt: "1/3", text: "Reach\nWhen Kazura Strangler enters, create a 1/1 green Saproling creature token." },
-      { name: "Deepwood Mycelia", cost: "{1}{G}", type: "Creature — Plant", pt: "0/3", hasCycling: true, text: "Defender\n{T}: Add {G}.\nCycling {2} ({2}, Discard this card: Draw a card.)" },
-      { name: "Necrotic Scarab", cost: "{1}{B}", type: "Creature — Insect", pt: "1/2", text: "When Necrotic Scarab dies, draw a card and lose 1 life." },
+      // 3. Link 2: Insects — Sacrifice Outlets & Graveyard Fuel (8 Cards)
+      { name: "Carrion Gnawer", cost: "{1}{B}", type: "Creature — Insect", pt: "1/1", text: "Flying. Sacrifice another creature: Put a +1/+1 counter on Carrion Gnawer." },
+      { name: "Husk-Mite", cost: "{B}", type: "Creature — Insect", pt: "1/1", text: "Deathtouch.\nWhen Husk-Mite dies, target opponent loses 1 life and you gain 1 life." },
+      { name: "Blight-Spore Beetle", cost: "{1}{B}", type: "Creature — Insect", pt: "2/1", text: "{1}, Sacrifice Blight-Spore Beetle: Mill two cards, then put a +1/+1 counter on target creature you control." },
+      { name: "Chitin Harvester", cost: "{1}{B}", type: "Creature — Insect", pt: "1/3", text: "{B}, Sacrifice another creature: Draw a card." },
+      { name: "Tomb-Burrower Centipede", cost: "{2}{B}", type: "Creature — Insect", pt: "4/2", text: "Menace.\n{1}{B}, Exile a land from your graveyard: Return Tomb-Burrower Centipede from your graveyard to the battlefield with a +1/+1 counter on it." },
+      { name: "Brood-Mother Mantis", cost: "{2}{B}", type: "Creature — Insect", pt: "3/3", text: "Flying, Deathtouch.\nWhenever a nontoken Insect you control dies, create a 1/1 black Insect creature token." },
+      { name: "Gloom-Shell Goliath", cost: "{3}{B}", type: "Creature — Insect Horror", pt: "3/5", text: "Menace.\nAt the beginning of your end step, if a creature died this turn, put a +1/+1 counter on each of up to two target creatures you control." },
+      { name: "Chitin-Lord Behemoth", cost: "{3}{B}{B}", type: "Creature — Insect Horror", pt: "4/4", text: "Deathtouch, menace.\nWhenever you sacrifice a nontoken creature, create a 1/1 black Insect creature token with deathtouch.\n{1}{B}, Sacrifice two Insect tokens: Return target creature card from your graveyard to your hand." },
 
-      // Creatures 3-4 Mana (14)
-      { name: "Shrine-Root Cultivator", cost: "{2}{G}", type: "Creature — Plant", pt: "1/4", text: "When Shrine-Root Cultivator enters, search your library for a basic land card, put it onto the battlefield tapped, then shuffle." },
-      { name: "Caustic Gel", cost: "{1}{G}{G}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 3, text: "Enters with three +1/+1 counters on it.\nWhen Caustic Gel enters, destroy up to one target artifact or enchantment." },
-      { name: "Yami-Gumo Stalker", cost: "{1}{B}{B}", type: "Creature — Spider", pt: "2/4", text: "Reach\nWhenever a creature with flying attacks you, Yami-Gumo Stalker deals 2 damage to that creature." },
-      { name: "Kuchiki Shambler", cost: "{2}{B}", type: "Creature — Plant", pt: "2/3", text: "When Kuchiki Shambler dies, return target creature card with mana value 2 or less from your graveyard to your hand." },
-      { name: "Fission Slime", cost: "{2}{G}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 3, text: "Enters with three +1/+1 counters on it.\nWhen Fission Slime dies, you gain 2 life." },
-      { name: "Silk-Spindle Recluse", cost: "{2}{G}", type: "Creature — Spider", pt: "2/3", text: "Reach\nWhen Silk-Spindle Recluse enters, create a 1/1 green Saproling creature token." },
-      { name: "Blight-Cap Ooze", cost: "{1}{B}{G}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 2, text: "Enters with two +1/+1 counters on it.\nWhen Blight-Cap Ooze dies, each opponent loses 1 life." },
-      { name: "Oni-Horned Beetle", cost: "{2}{B}", type: "Creature — Insect", pt: "2/2", text: "Menace\nWhen Oni-Horned Beetle dies, put a +1/+1 counter on target creature you control." },
-      { name: "Canopy Sentinel", cost: "{2}{G}", type: "Creature — Spider", pt: "2/3", text: "Reach\nWhenever Canopy Sentinel blocks, draw a card." },
-      { name: "Aegis Kuwagata", cost: "{2}{G}{G}", type: "Creature — Insect", pt: "2/5", text: "Vigilance\n{1}{G}: Target creature you control gains hexproof until end of turn." },
-      { name: "Haka-Gumo Weaver", cost: "{2}{B}{G}", type: "Creature — Spider", pt: "2/4", text: "Reach\nAt the beginning of your end step, if a creature died this turn, draw a card and lose 1 life." },
-      { name: "Puffball Matango", cost: "{3}{G}", type: "Creature — Plant Fungus", pt: "3/4", text: "Whenever Puffball Matango is dealt combat damage, you may create that many 1/1 green Saproling creature tokens." },
-      { name: "Venomous Jelly", cost: "{2}{B}{B}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 4, text: "Enters with four +1/+1 counters on it.\nWhen Venomous Jelly dies, target creature an opponent controls gets -2/-2 until end of turn." },
-      { name: "Spore-Lantern Fungus", cost: "{2}{G}{G}", type: "Creature — Plant Fungus", pt: "3/3", text: "When Spore-Lantern Fungus enters, put a +1/+1 counter on up to one target creature you control.\n{X}{G}{G}: Put a +1/+1 counter on each of up to X target creatures you control with a +1/+1 counter on them. Activate only as a sorcery." },
+      // 4. Link 3: Oozes — Biomass & Counter Multipliers (8 Cards)
+      { name: "Slime-Droplet", cost: "{G}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 1, text: "Slime-Droplet enters the battlefield with a +1/+1 counter on it.\nWhen Slime-Droplet dies, put a +1/+1 counter on target creature you control." },
+      { name: "Acidic Globule", cost: "{1}{G}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 2, text: "Deathtouch. Acidic Globule enters the battlefield with two +1/+1 counters on it.\n{1}{G}, Remove a +1/+1 counter from Acidic Globule: Destroy target artifact or enchantment with mana value 2 or less." },
+      { name: "Mitosis Blob", cost: "{2}{G}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 3, text: "Mitosis Blob enters the battlefield with three +1/+1 counters on it.\nWhen Mitosis Blob dies, if it had two or more +1/+1 counters on it, create two 0/0 green Ooze creature tokens, each with a +1/+1 counter on it." },
+      { name: "Marrow-Seeker Gel", cost: "{2}{B}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 2, text: "Marrow-Seeker Gel enters the battlefield with two +1/+1 counters on it.\nWhenever a creature card is put into your graveyard from anywhere for the first time each turn, put a +1/+1 counter on Marrow-Seeker Gel." },
+      { name: "Bog-Sludge Amalgam", cost: "{2}{B}{G}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 3, text: "Trample. Bog-Sludge Amalgam enters with three +1/+1 counters on it.\n{B}{G}, {T}, Exile a creature card from your graveyard: Put a number of +1/+1 counters on Bog-Sludge Amalgam equal to the exiled card's toughness. Activate only as a sorcery." },
+      { name: "Symbiotic Jelly", cost: "{3}{G}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 3, text: "Symbiotic Jelly enters the battlefield with three +1/+1 counters on it.\n{1}, Remove a +1/+1 counter from Symbiotic Jelly: Put a +1/+1 counter on another target creature you control." },
+      { name: "Festering Colony", cost: "{3}{B}{G}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 4, text: "Menace. Festering Colony enters with four +1/+1 counters on it.\nAt the beginning of your upkeep, if you control three or more creatures with +1/+1 counters on them, create a 0/0 green Ooze creature token with two +1/+1 counters on it." },
+      { name: "Primeval Behemoth-Gel", cost: "{4}{G}{G}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 6, text: "Trample. Primeval Behemoth-Gel enters with six +1/+1 counters on it.\n{1}, Remove a +1/+1 counter from Primeval Behemoth-Gel: Primeval Behemoth-Gel gains first strike until end of turn.\nWhen Primeval Behemoth-Gel dies, distribute its +1/+1 counters among any number of target creatures you control." },
 
-      // Creatures 5-6 Mana (7)
-      { name: "Dōkutsu Broodmother", cost: "{3}{G}{G}", type: "Creature — Spider", pt: "3/6", text: "Reach\nWhen Dōkutsu Broodmother enters, create two 1/2 green Spider creature tokens with reach." },
-      { name: "Tsuchigumo Huntress", cost: "{3}{B}{G}", type: "Creature — Spider", pt: "3/5", text: "Reach, deathtouch\nWhenever a creature you control with a +1/+1 counter on it dies, you gain 1 life." },
-      { name: "Ancient Jubokko", cost: "{4}{B}", type: "Creature — Plant", pt: "4/4", text: "When Ancient Jubokko enters, return target creature card with mana value 2 or less from your graveyard to your hand." },
-      { name: "Abyssal Protoplasm", cost: "{3}{B}{G}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 4, text: "Enters with four +1/+1 counters on it.\nWhen Abyssal Protoplasm enters, you may exile up to two creature cards from graveyards. Put a +1/+1 counter on Abyssal Protoplasm for each card exiled this way." },
-      { name: "Elder Sugi Colossus", cost: "{4}{G}{G}", type: "Creature — Plant Elemental", pt: "4/7", text: "Trample\nWhenever a Saproling or Plant you control dies, you gain 2 life." },
-      { name: "Kuro-Kabuto Dreadstag", cost: "{4}{B}{B}", type: "Creature — Insect Horror", pt: "5/4", text: "Menace\nWhen Kuro-Kabuto Dreadstag enters, target opponent sacrifices a creature." },
-      { name: "Shinkai Leviathan", cost: "{4}{B}{G}", type: "Creature — Ooze", pt: "0/0", defaultCounters: 5, text: "Enters with five +1/+1 counters on it.\nTrample\nAt the beginning of your end step, if you control a creature with power 5 or greater, put a +1/+1 counter on target creature you control." },
+      // 5. Link 4: Spiders — Web Defense & Attrition Harvest (8 Cards)
+      { name: "Gossamer Skitterer", cost: "{G}", type: "Creature — Spider", pt: "1/2", text: "Reach.\nWhenever Gossamer Skitterer blocks a creature with flying, put a +1/+1 counter on Gossamer Skitterer." },
+      { name: "Venom-Lace Recluse", cost: "{1}{B}", type: "Creature — Spider", pt: "1/3", text: "Reach, deathtouch.\n{1}{B}, Sacrifice Venom-Lace Recluse: Target creature gets -2/-2 until end of turn." },
+      { name: "Silk-Trap Weaver", cost: "{2}{G}", type: "Creature — Spider", pt: "2/4", text: "Reach.\nWhenever one or more +1/+1 counters are put on Silk-Trap Weaver, tap up to one target creature an opponent controls." },
+      { name: "Dusk-Widow Stalker", cost: "{1}{B}{G}", type: "Creature — Spider", pt: "2/3", text: "Menace.\nWhenever Dusk-Widow Stalker deals combat damage to a player, if it has a +1/+1 counter on it, that player discards a card." },
+      { name: "Brood-Web Matriarch", cost: "{2}{G}{G}", type: "Creature — Spider", pt: "2/5", text: "Reach.\nWhenever a non-token Spider you control with a +1/+1 counter on it dies, create two 1/2 green Spider creature tokens with reach." },
+      { name: "Blight-Thread Orbweaver", cost: "{2}{B}{G}", type: "Creature — Spider", pt: "3/4", text: "Reach, deathtouch.\nWhenever a creature an opponent controls dies, if it was dealt damage by a Spider you control this turn, you gain 1 life and put a +1/+1 counter on target Spider you control." },
+      { name: "Canopy-Vise Goliath", cost: "{3}{G}{G}", type: "Creature — Spider", pt: "4/6", text: "Reach, trample.\nSpiders you control have +1/+1 and deathtouch.\n{1}, {T}: Regenerate target Spider or Insect." },
+      { name: "Charnel-Silk Horror", cost: "{4}{B}{G}", type: "Creature — Spider Horror", pt: "4/7", text: "Reach.\nAt the beginning of your end step, you may choose any number of Spiders you control with a +1/+1 counter on them. Each opponent loses life equal to the number of creatures chosen this way, and you gain life equal to the life lost this way. Then remove a +1/+1 counter from each of those creatures." },
 
-      // Instants & Sorceries (15)
-      { name: "Nourish the Core", cost: "{B}{G}", type: "Instant", text: "Put a +1/+1 counter on target creature you control. If it's an Ooze, put two +1/+1 counters on it instead." },
-      { name: "Withering Touch", cost: "{1}{B}", type: "Instant", text: "Target creature gets -2/-2 until end of turn. If it dies this turn, you gain 2 life." },
-      { name: "Corrosive Dissolution", cost: "{1}{G}", type: "Instant", text: "Destroy target artifact or enchantment. If you control an Ooze, draw a card." },
-      { name: "Kodama's Awakening", cost: "{1}{G}", type: "Sorcery", hasCycling: true, text: "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. You gain 2 life.\nCycling {2} ({2}, Discard this card: Draw a card.)" },
-      { name: "Chitinous Ward", cost: "{1}{G}", type: "Instant", text: "Target creature you control gets +2/+2 until end of turn. If it's an Ooze or Plant, it also gains hexproof until end of turn." },
-      { name: "Venomous Retaliation", cost: "{1}{G}", type: "Instant", text: "Target creature you control deals damage equal to its toughness to target creature you don't control." },
-      { name: "Rebirth from Rot", cost: "{2}{G}", type: "Sorcery", text: "Return target creature card with mana value 3 or less from your graveyard to the battlefield. It enters with a +1/+1 counter on it." },
-      { name: "Mycelial Veil", cost: "{2}{G}", type: "Instant", text: "Choose one —\n• Prevent all combat damage that would be dealt to target creature you control this turn.\n• Prevent all noncombat damage that would be dealt to target creature you control this turn.\nIf that creature is an Ooze, Plant, Spider, or Insect, put a +1/+1 counter on it." },
-      { name: "Threads of Fate", cost: "{2}{B}", type: "Instant", text: "Draw two cards, then mill two cards. You lose 1 life." },
-      { name: "Verdant Proliferation", cost: "{2}{G}", type: "Sorcery", text: "Create two 1/1 green Saproling creature tokens. If you control a Plant, create three instead." },
-      { name: "Glimpse the Abyss", cost: "{2}{B}", type: "Sorcery", text: "Draw a card. Then you may mill two cards. If you do, you gain 2 life." },
-      { name: "Digestive Torpor", cost: "{1}{B}{G}", type: "Instant", text: "Destroy target creature or planeswalker. If you control an Ooze, you gain 2 life." },
-      { name: "Unearth the Fallen", cost: "{3}{B}", type: "Sorcery", text: "Return up to two target creature cards with total mana value 4 or less from your graveyard to your hand." },
-      { name: "Kurotsuta's Grasp", cost: "{2}{B}{G}", type: "Sorcery", text: "Destroy target nonland permanent. If it was a creature, put a +1/+1 counter on up to one target creature you control." },
-      { name: "Bountiful Harvest", cost: "{2}{B}{G}", type: "Sorcery", text: "Draw cards equal to the greatest toughness among creatures you control, then discard two cards." },
+      // 6. Signature Permanents & Ecosystem Spells (25 Cards)
+      { name: "The Loom of Decay", cost: "{2}{B}{G}", type: "Legendary Enchantment", text: "Whenever one or more +1/+1 counters are put on a creature you control, choose one that hasn't been chosen this turn —\n• Create a 1/1 black Insect creature token with deathtouch.\n• Target player mills two cards.\n• You gain 1 life." },
+      { name: "Spore-Weaver's Crucible", cost: "{3}", type: "Artifact", text: "{1}, {T}, Sacrifice a creature: Put two +1/+1 counters on target creature you control, then draw a card.\nWhenever a creature you control dies, put a charge counter on Spore-Weaver's Crucible. Then, if it has three or more charge counters on it, remove them and create a 0/0 green Ooze creature token that enters with three +1/+1 counters on it." },
+      { name: "Canopy Roots, Deep Silt", cost: "{1}{G}{G}", type: "Enchantment", text: "Plants and Spiders you control get +0/+1 and have vigilance.\nWhenever a Plant, Insect, Ooze, or Spider you control enters the battlefield for the first time each turn, you may pay {1}. If you do, mill two cards, then you may return a permanent card from your graveyard to your hand that was milled this way." },
+      { name: "Amber-Sap Cocoon", cost: "{2}{G}", type: "Artifact", text: "{1}, {T}: Put a +1/+1 counter on target creature you control.\n{2}, Sacrifice Amber-Sap Cocoon: Creatures you control with +1/+1 counters on them gain hexproof and indestructible until end of turn." },
+      { name: "Canopy Seed-Pod", cost: "{G}", type: "Artifact", text: "{1}, {T}, Sacrifice Canopy Seed-Pod: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. If you sacrificed this while controlling a creature with a +1/+1 counter on it, you gain 2 life." },
+      { name: "Taproot Surge", cost: "{1}{G}", type: "Sorcery", text: "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. If you control a Plant, put a +1/+1 counter on up to one target creature you control." },
+      { name: "Silt-Siphon Ritual", cost: "{1}{B}", type: "Instant", text: "As an additional cost to cast this spell, sacrifice a creature.\nAdd {B/G}{B/G}{B/G}{B/G}." },
+      { name: "Biomass Totem", cost: "{2}", type: "Artifact", text: "{T}: Add {B} or {G}.\n{3}, {T}, Sacrifice Biomass Totem: Put two +1/+1 counters on target creature you control." },
+      { name: "Mycelial Vein-Stone", cost: "{2}", type: "Artifact", text: "{T}: Add {C}.\n{1}, {T}: Add {B} or {G}. Spend this mana only to cast Plant, Insect, Ooze, or Spider spells or activate abilities of creatures you control." },
+      { name: "Chitinous Cultivate", cost: "{2}{G}", type: "Sorcery", text: "Search your library for up to two basic land cards, reveal them, put one onto the battlefield tapped and the other into your hand, then shuffle. Then mill two cards." },
+      { name: "Spore-Mound Growth", cost: "{2}{G}", type: "Sorcery", text: "Choose one —\n• Search your library for a basic land card, put it onto the battlefield untapped, then shuffle.\n• Put a +1/+1 counter on each of up to two target creatures you control." },
+      { name: "Swarm-Mind Commune", cost: "{G}", type: "Sorcery", text: "Reveal the top four cards of your library. You may put a Plant, Insect, Ooze, or Spider card and a land card from among them into your hand. Put the rest into your graveyard." },
+      { name: "Harvest the Husk", cost: "{1}{B}", type: "Instant", text: "As an additional cost to cast this spell, sacrifice a creature.\nDraw two cards. If the sacrificed creature had one or more +1/+1 counters on it, create a 1/1 black Insect creature token with deathtouch." },
+      { name: "Carrion Ledger", cost: "{1}{B}", type: "Enchantment", text: "Whenever a nontoken creature you control dies, put a study counter on Carrion Ledger.\n{1}{B}, Remove two study counters from Carrion Ledger: Draw a card." },
+      { name: "Symbiotic Resonance", cost: "{2}{G}", type: "Instant", text: "Draw a card for each creature you control with one or more +1/+1 counters on it (up to a maximum of four cards)." },
+      { name: "Web-Thread Divination", cost: "{2}{B}", type: "Sorcery", text: "Mill three cards, then return up to two Plant, Insect, Ooze, or Spider creature cards from your graveyard to your hand." },
+      { name: "Fungal Memory", cost: "{2}{G}", type: "Enchantment", text: "At the beginning of your upkeep, mill two cards.\n{2}{G}, Exile two cards from your graveyard: Draw a card. Activate only once each turn." },
+      { name: "Gelatinous Insight", cost: "{1}{B}{G}", type: "Instant", text: "Choose one —\n• Draw two cards and lose 2 life.\n• As an additional cost to choose this mode, discard a card or exile two cards from your graveyard. Draw two cards and gain 2 life." },
+      { name: "Venom-Lace Snare", cost: "{1}{B}", type: "Instant", text: "Choose one —\n• Destroy target creature with mana value 3 or less.\n• Target creature gets -3/-3 until end of turn. If you control a Spider, that creature's controller loses 2 life." },
+      { name: "Caustic Gel-Spit", cost: "{1}{B}", type: "Instant", text: "As an additional cost to cast this spell, remove a +1/+1 counter from a creature you control.\nTarget creature gets -4/-4 until end of turn." },
+      { name: "Strangleroot Crush", cost: "{1}{G}", type: "Instant", text: "Target creature you control gets +1/+1 until end of turn and deals damage equal to its power to target creature you don't control." },
+      { name: "Acidic Dissolution", cost: "{1}{B}{G}", type: "Instant", text: "Destroy target nonland permanent. Its controller mills cards equal to its mana value." },
+      { name: "Cocoon of Resilience", cost: "{2}{G}", type: "Instant", text: "Choose one —\n• Target creature you control gains hexproof and indestructible until your next turn.\n• Creatures you control with one or more +1/+1 counters on them gain indestructible until end of turn." },
+      { name: "Rot-Bloom Rupture", cost: "{1}{B}{G}", type: "Instant", text: "Destroy target permanent. Each player creates a 1/1 black Insect creature token with deathtouch." },
+      { name: "Primordial Slough", cost: "{3}{B}{G}", type: "Sorcery", text: "Destroy all creatures without +1/+1 counters. You gain 2 life for each creature destroyed this way." },
 
-      // Enchantments & Artifacts (10)
-      { name: "Magatama of Decay", cost: "{2}", type: "Artifact", text: "Whenever a creature you control dies, you may pay {1}. If you do, put a +1/+1 counter on target creature you control." },
-      { name: "Mantle of Mycelia", cost: "{1}{G}", type: "Enchantment", text: "At the beginning of your end step, if a creature died this turn, you may put a +1/+1 counter on target creature you control." },
-      { name: "Fertile Mulch", cost: "{2}{B}", type: "Enchantment", text: "Whenever a creature card is put into your graveyard from anywhere, add {B} or {G}. This mana can only be used to cast creature spells." },
-      { name: "Pulse of the Mire", cost: "{1}{B}{G}", type: "Enchantment", text: "At the beginning of your end step, if a creature died this turn, you may put a +1/+1 counter on target Ooze you control." },
-      { name: "Yoroi Carapace", cost: "{2}{G}", type: "Artifact — Equipment", text: "Equipped creature gets +1/+1 and has reach.\nEquip {1}{G}" },
-      { name: "Nursery of Spores", cost: "{2}{G}", type: "Enchantment", text: "At the beginning of your end step, create a 1/1 green Saproling creature token.\n{2}{G}, Sacrifice a creature: Draw a card and put a +1/+1 counter on target creature you control." },
-      { name: "Veil of Kudzu", cost: "{2}{G}", type: "Enchantment", text: "{2}{G}: Target creature you control gains hexproof until end of turn." },
-      { name: "Symbiotic Mycelium", cost: "{2}{G}", type: "Enchantment", text: "Whenever one or more +1/+1 counters are put on a creature you control, draw a card. This ability triggers only once each turn." },
-      { name: "Altar of Silk and Bone", cost: "{2}{B}", type: "Enchantment", text: "{2}, Sacrifice a creature: Draw a card." },
-      { name: "Caged Amber", cost: "{3}", type: "Artifact", text: "{T}: Add {B} or {G}.\n{3}: Put a +1/+1 counter on target creature you control. Activate only as a sorcery." },
-
-      // Custom Lands (6)
-      { name: "Jukai Heartwood", cost: "", type: "Legendary Land", isLand: true, text: "{T}: Add {B} or {G}.\n{1}, {T}: You gain 1 life." },
-      { name: "Shrine of Kurotsuta", cost: "", type: "Legendary Land", isLand: true, text: "{T}: Add {G}.\n{T}: Add {B}. Activate only if you control a Plant or Ooze." },
-      { name: "Jorō's Sanctuary", cost: "", type: "Legendary Land", isLand: true, text: "{T}: Add {B}.\nWhen Jorō's Sanctuary enters, you may mill two cards." },
-      { name: "Sunken Torii Path", cost: "", type: "Land", isLand: true, text: "{T}: Add {B} or {G}.\nSunken Torii Path enters tapped." },
-      { name: "Shimeji Bog", cost: "", type: "Land", isLand: true, text: "{T}: Add {G}.\n{1}, {T}, Sacrifice Shimeji Bog: Create a 1/1 green Saproling creature token." },
-      { name: "Yomi Bog", cost: "", type: "Land", isLand: true, text: "{T}: Add {B}.\n{2}, {T}, Pay 1 life: Draw a card." }
+      // 7. Custom Mana Base (10 Custom Lands + 28 Basic Lands = 38)
+      { name: "Heart of the Rot-Canopy", cost: "", type: "Legendary Land", isLand: true, text: "Enters the battlefield tapped unless you control a Plant, Insect, Ooze, or Spider.\n{T}: Add {B} or {G}.\n{B}{G}, {T}: Put a +1/+1 counter on target creature you control. Activate only as a sorcery." },
+      { name: "Silt-Choked Bog", cost: "", type: "Land", isLand: true, text: "{T}: Add {C}\n{T}, Exile target card from a graveyard: Add {B} or {G}.\nWhen Silt-Choked Bog enters the battlefield, mill two cards." },
+      { name: "Web-Draped Hollow", cost: "", type: "Land", isLand: true, entersTapped: true, text: "Enters the battlefield tapped.\n{T}: Add {B} or {G}.\n{B}, {T}: Target creature gains menace until end of turn." },
+      { name: "Spore-Vein Fen", cost: "", type: "Land", isLand: true, text: "{T}: Add {C}.\n{T}, Pay 1 life: Add {B} or {G}." },
+      { name: "Chitin-Mound Clearing", cost: "", type: "Land", isLand: true, text: "{T}: Add {C}.\n{1}, {T}, Sacrifice Chitin-Mound Clearing: Search your library for a basic land, put it onto the battlefield tapped, then shuffle." },
+      { name: "Ooze-Seep Mire", cost: "", type: "Land", isLand: true, text: "Enters the battlefield tapped unless you control two or more basic lands.\nOoze creatures get +0/+1.\n{T}: Add {B} or {G}." },
+      { name: "Overgrown Husk-Pit", cost: "", type: "Land", isLand: true, text: "{T}: Add {C}.\n{T}, Exile a creature card from your graveyard: Draw a card. Activate only as a sorcery." },
+      { name: "Canopy-Root Nexus", cost: "", type: "Land", isLand: true, text: "{T}: Add {C}.\n{1}, {T}: Add {B} or {G}. Spend this mana only to cast Plant, Insect, Ooze, or Spider spells." },
+      { name: "Gelatinous Pool", cost: "", type: "Land", isLand: true, entersTapped: true, text: "Enters the battlefield tapped.\n{T}: Add {G}.\n{1}{G}, {T}, Remove a +1/+1 counter from a creature you control: Create a 0/0 green Ooze creature token that enters with a +1/+1 counter on it. Activate only as a sorcery." },
+      { name: "Silk-Spun Lookout", cost: "", type: "Land", isLand: true, entersTapped: true, text: "Enters the battlefield tapped.\n{T}: Add {B}.\n{1}{G}, {T}: Choose one —\n• Target creature gains reach until end of turn.\n• Put a +1/+1 counter on target Spider or Plant you control.\nActivate only as a sorcery." }
     ];
 
-    // Add 18 Forests and 13 Swamps so total = 100 exact cards
-    for (let i = 0; i < 18; i++) {
+    // Add 15 Forests and 13 Swamps so total = 100 exact cards (1 + 4 + 8 + 8 + 8 + 8 + 25 + 10 + 15 + 13 = 100)
+    for (let i = 0; i < 15; i++) {
       DECK_BLUEPRINT.push({ name: "Forest", cost: "", type: "Basic Land — Forest", isLand: true, text: "({T}: Add {G}.)" });
     }
     for (let i = 0; i < 13; i++) {
@@ -452,7 +483,7 @@
     };
 
     let saveTimeout = null;
-    const BROWSER_SAVE_KEY = 'kusari_forest_playmat_v1';
+    const BROWSER_SAVE_KEY = 'kusari_forest_playmat_v2';
 
     function openPlaymatDB() {
       return new Promise((resolve, reject) => {
@@ -573,6 +604,7 @@
         zone: c.isCommander ? 'command' : 'library',
         tapped: false,
         plus1: 0,
+        genericCounters: 0,
         reach: false,
         deathtouch: false,
         isToken: false
@@ -609,6 +641,7 @@
           c.zone = 'library';
           c.tapped = false;
           c.plus1 = 0;
+          c.genericCounters = 0;
           c.reach = false;
           c.deathtouch = false;
         }
@@ -629,21 +662,6 @@
         }
       }
       if (!silent) showToast(drawn ? `Drew ${drawn} card${drawn > 1 ? 's' : ''}` : "Library is empty!");
-      render();
-    }
-
-    function cycleCard(cardId) {
-      const card = state.cards.find(c => c.id === cardId);
-      if (!card || card.zone !== 'hand') return;
-      card.zone = 'graveyard';
-      closeModal('card-modal');
-      const top = state.cards.find(c => c.zone === 'library');
-      if (top) {
-        top.zone = 'hand';
-        showToast(`Cycled ${card.name} → Drew ${top.name}!`);
-      } else {
-        showToast(`Cycled ${card.name} (Library empty)`);
-      }
       render();
     }
 
@@ -677,6 +695,26 @@
       render();
     }
 
+    function doubleAllCounters() {
+      let count = 0;
+      state.cards.forEach(c => {
+        if (c.zone === 'battlefield' && !c.isLand && c.plus1 > 0) {
+          c.plus1 *= 2;
+          count++;
+        }
+      });
+      showToast(count ? `Doubled +1/+1 counters on ${count} permanent${count > 1 ? 's' : ''}!` : "No permanents with +1/+1 counters on battlefield");
+      render();
+    }
+
+    function doubleCardCounters() {
+      const card = state.cards.find(c => c.id === state.selectedCardId);
+      if (!card) return;
+      card.plus1 *= 2;
+      openCardModal(card.id);
+      render();
+    }
+
     function moveCard(cardId, targetZone) {
       const card = state.cards.find(c => c.id === cardId);
       if (!card) return;
@@ -700,14 +738,16 @@
 
       if (targetZone === 'battlefield') {
         card.plus1 = card.defaultCounters || 0;
+        card.genericCounters = 0;
         if (state.emblem === 'front' && card.type.includes('Creature')) {
           card.tapped = true;
         }
-        if (card.name === 'Sunken Torii Path') {
+        if (card.entersTapped || card.name === 'Sproutling Tender') {
           card.tapped = true;
         }
       } else {
         card.plus1 = 0;
+        card.genericCounters = 0;
         card.reach = false;
         card.deathtouch = false;
       }
@@ -733,29 +773,47 @@
         const counters = parseInt(document.getElementById('ooze-token-counters').value, 10) || 1;
         tokenObj = {
           id,
-          name: "Ooze Plant Token",
+          name: "Ooze Token",
           cost: "",
-          type: "Creature Token — Ooze Plant",
+          type: "Creature Token — Ooze",
           pt: "0/0",
-          text: "Created by Kurotsuta, Core of Decay.",
+          text: "0/0 green Ooze creature token.",
           zone: 'battlefield',
           tapped: state.emblem === 'front',
           plus1: counters,
+          genericCounters: 0,
           reach: false,
           deathtouch: false,
           isToken: true
         };
-      } else if (kind === 'saproling') {
+      } else if (kind === 'insect_dt') {
         tokenObj = {
           id,
-          name: "Saproling Token",
+          name: "Insect Token (Deathtouch)",
           cost: "",
-          type: "Creature Token — Saproling",
+          type: "Creature Token — Insect",
           pt: "1/1",
-          text: "Green Saproling creature token.",
+          text: "Deathtouch",
           zone: 'battlefield',
           tapped: state.emblem === 'front',
           plus1: 0,
+          genericCounters: 0,
+          reach: false,
+          deathtouch: true,
+          isToken: true
+        };
+      } else if (kind === 'insect') {
+        tokenObj = {
+          id,
+          name: "Insect Token",
+          cost: "",
+          type: "Creature Token — Insect",
+          pt: "1/1",
+          text: "1/1 black Insect creature token.",
+          zone: 'battlefield',
+          tapped: state.emblem === 'front',
+          plus1: 0,
+          genericCounters: 0,
           reach: false,
           deathtouch: false,
           isToken: true
@@ -771,6 +829,23 @@
           zone: 'battlefield',
           tapped: state.emblem === 'front',
           plus1: 0,
+          genericCounters: 0,
+          reach: true,
+          deathtouch: false,
+          isToken: true
+        };
+      } else if (kind === 'plant') {
+        tokenObj = {
+          id,
+          name: "Plant Token",
+          cost: "",
+          type: "Creature Token — Plant",
+          pt: "0/1",
+          text: "0/1 green Plant creature token.",
+          zone: 'battlefield',
+          tapped: state.emblem === 'front',
+          plus1: 0,
+          genericCounters: 0,
           reach: false,
           deathtouch: false,
           isToken: true
@@ -785,94 +860,14 @@
       }
     }
 
-    function openCardModal(cardId) {
-      const card = state.cards.find(c => c.id === cardId);
-      if (!card) return;
-      state.selectedCardId = cardId;
-
-      document.getElementById('modal-zone-tag').textContent = card.zone.toUpperCase();
-      document.getElementById('modal-card-name').textContent = card.name;
-      document.getElementById('modal-card-type').textContent = card.type;
-      document.getElementById('modal-card-cost').textContent = card.cost || 'Land / Token';
-      document.getElementById('modal-card-cost').classList.toggle('hidden', !card.cost);
-      document.getElementById('modal-card-text').textContent = card.text;
-
-      const ptEl = document.getElementById('modal-card-pt');
-      if (card.pt) {
-        const [p, t] = card.pt.split('/').map(Number);
-        const modT = (state.emblem === 'front' && card.zone === 'battlefield' && card.type.includes('Creature')) ? -1 : 0;
-        ptEl.textContent = `${p + card.plus1}/${t + card.plus1 + modT}`;
-      } else {
-        ptEl.textContent = '';
-      }
-
-      const countersBox = document.getElementById('modal-counters-box');
-      if (card.zone === 'battlefield' && !card.isLand) {
-        countersBox.classList.remove('hidden');
-        document.getElementById('modal-plus1-val').textContent = card.plus1;
-
-        const rBtn = document.getElementById('btn-reach-counter');
-        rBtn.className = card.reach
-          ? "px-2.5 py-1 rounded-lg text-xs font-bold border bg-emerald-700 border-emerald-400 text-white"
-          : "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-slate-800 border-slate-600 text-slate-300";
-
-        const dBtn = document.getElementById('btn-deathtouch-counter');
-        dBtn.className = card.deathtouch
-          ? "px-2.5 py-1 rounded-lg text-xs font-bold border bg-purple-700 border-purple-400 text-white"
-          : "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-slate-800 border-slate-600 text-slate-300";
-      } else {
-        countersBox.classList.add('hidden');
-      }
-
-      const actions = document.getElementById('modal-actions');
-      actions.innerHTML = '';
-
-      const addBtn = (label, cls, fn) => {
-        const b = document.createElement('button');
-        b.className = `py-2 px-3 rounded-xl font-bold text-xs transition active:scale-95 ${cls}`;
-        b.textContent = label;
-        b.onclick = fn;
-        actions.appendChild(b);
-      };
-
-      if (card.zone === 'hand') {
-        const isSpell = card.type.startsWith('Instant') || card.type.startsWith('Sorcery');
-        if (isSpell) {
-          addBtn('Cast → Graveyard', 'col-span-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950', () => moveCard(card.id, 'graveyard'));
-        } else {
-          addBtn('Play to Battlefield', 'col-span-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950', () => moveCard(card.id, 'battlefield'));
-        }
-        if (card.hasCycling) {
-          addBtn('Cycle {2} → Draw 1', 'col-span-2 bg-sky-600 hover:bg-sky-500 text-slate-950', () => cycleCard(card.id));
-        }
-        addBtn('Discard (Graveyard)', 'bg-amber-900/70 hover:bg-amber-800 text-amber-100', () => moveCard(card.id, 'graveyard'));
-        addBtn('Exile', 'bg-purple-900/70 hover:bg-purple-800 text-purple-100', () => moveCard(card.id, 'exile'));
-      } else if (card.zone === 'command') {
-        addBtn('Cast Commander', 'col-span-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950', () => moveCard(card.id, 'battlefield'));
-      } else if (card.zone === 'battlefield') {
-        addBtn(card.tapped ? 'Untap' : 'Tap', 'bg-amber-600 hover:bg-amber-500 text-slate-950', () => { toggleTap(card.id); openCardModal(card.id); });
-        addBtn(card.isToken ? 'Destroy Token' : 'Send to Graveyard', 'bg-rose-800 hover:bg-rose-700 text-white', () => moveCard(card.id, 'graveyard'));
-        addBtn('Return to Hand', 'bg-slate-700 hover:bg-slate-600 text-white', () => moveCard(card.id, 'hand'));
-        if (card.isCommander) {
-          addBtn('Command Zone', 'bg-emerald-900 hover:bg-emerald-800 text-emerald-100', () => moveCard(card.id, 'command'));
-        } else {
-          addBtn('Exile', 'bg-purple-900/80 hover:bg-purple-800 text-purple-100', () => moveCard(card.id, 'exile'));
-        }
-      } else {
-        addBtn('Put to Hand', 'bg-emerald-600 hover:bg-emerald-500 text-slate-950', () => moveCard(card.id, 'hand'));
-        addBtn('Put to Battlefield', 'bg-teal-600 hover:bg-teal-500 text-slate-950', () => moveCard(card.id, 'battlefield'));
-        if (card.zone !== 'graveyard') addBtn('Graveyard', 'bg-amber-900/80 text-amber-100', () => moveCard(card.id, 'graveyard'));
-        if (card.isCommander) addBtn('Command Zone', 'bg-emerald-900 text-emerald-100', () => moveCard(card.id, 'command'));
-      }
-
-      document.getElementById('card-modal').classList.remove('hidden');
-      document.getElementById('card-modal').classList.add('flex');
-    }
-
     function adjustCounter(type, delta) {
       const card = state.cards.find(c => c.id === state.selectedCardId);
       if (!card) return;
-      card.plus1 = Math.max(0, card.plus1 + delta);
+      if (type === 'genericCounters') {
+        card.genericCounters = Math.max(0, (card.genericCounters || 0) + delta);
+      } else {
+        card.plus1 = Math.max(0, card.plus1 + delta);
+      }
       openCardModal(card.id);
       render();
     }
@@ -952,7 +947,138 @@
           if (bMatches) b += bMatches.length;
         }
       });
-      return { g, b };
+      return { g, b, combined: g + b };
+    }
+
+    function getStaticBuffs(card, dev) {
+      let bonusP = 0;
+      let bonusT = 0;
+      const grantedKeywords = new Set();
+
+      const isKurotsutaEnchantmentOnly = card.isCommander && dev.combined < 6;
+      const isCreature = card.type && card.type.includes('Creature') && !isKurotsutaEnchantmentOnly;
+      if (!isCreature) return { bonusP: 0, bonusT: 0, grantedKeywords: [] };
+
+      const battlefieldCards = state.cards.filter(c => c.zone === 'battlefield');
+
+      // 1. Emblem static debuff: Toxic Spores (-0/-1 to creatures you control)
+      if (state.emblem === 'front') {
+        bonusT -= 1;
+      }
+
+      // 2. Canopy-Vise Goliath: "Spiders you control have +1/+1 and deathtouch."
+      const hasCanopyVise = battlefieldCards.some(c => c.name === 'Canopy-Vise Goliath');
+      if (hasCanopyVise && card.type.includes('Spider')) {
+        bonusP += 1;
+        bonusT += 1;
+        if (!card.deathtouch && !(card.text || '').toLowerCase().includes('deathtouch')) {
+          grantedKeywords.add('Deathtouch');
+        }
+      }
+
+      // 3. Canopy Roots, Deep Silt: "Plants and Spiders you control get +0/+1 and have vigilance."
+      const canopyRootsCount = battlefieldCards.filter(c => c.name === 'Canopy Roots, Deep Silt').length;
+      if (canopyRootsCount > 0 && (card.type.includes('Plant') || card.type.includes('Spider'))) {
+        bonusT += 1 * canopyRootsCount;
+        if (!(card.text || '').toLowerCase().includes('vigilance')) {
+          grantedKeywords.add('Vigilance');
+        }
+      }
+
+      // 4. Ooze-Seep Mire: "Ooze creatures get +0/+1"
+      const oozeMireCount = battlefieldCards.filter(c => c.name === 'Ooze-Seep Mire').length;
+      if (oozeMireCount > 0 && card.type.includes('Ooze')) {
+        bonusT += 1 * oozeMireCount;
+      }
+
+      return {
+        bonusP,
+        bonusT,
+        grantedKeywords: Array.from(grantedKeywords)
+      };
+    }
+
+    function openCardModal(cardId) {
+      const card = state.cards.find(c => c.id === cardId);
+      if (!card) return;
+      state.selectedCardId = cardId;
+
+      document.getElementById('modal-zone-tag').textContent = card.zone.toUpperCase();
+      document.getElementById('modal-card-name').textContent = card.name;
+      document.getElementById('modal-card-type').textContent = card.type;
+      document.getElementById('modal-card-cost').textContent = card.cost || 'Land / Token';
+      document.getElementById('modal-card-cost').classList.toggle('hidden', !card.cost);
+      document.getElementById('modal-card-text').textContent = card.text;
+
+      const ptEl = document.getElementById('modal-card-pt');
+      if (card.pt) {
+        const [p, t] = card.pt.split('/').map(Number);
+        const dev = calculateDevotion();
+        const buffs = card.zone === 'battlefield' ? getStaticBuffs(card, dev) : { bonusP: 0, bonusT: 0, grantedKeywords: [] };
+        ptEl.textContent = `${p + card.plus1 + buffs.bonusP}/${t + card.plus1 + buffs.bonusT}`;
+      } else {
+        ptEl.textContent = '';
+      }
+
+      const countersBox = document.getElementById('modal-counters-box');
+      if (card.zone === 'battlefield' && !card.isLand) {
+        countersBox.classList.remove('hidden');
+        document.getElementById('modal-plus1-val').textContent = card.plus1;
+        document.getElementById('modal-generic-val').textContent = card.genericCounters || 0;
+
+        const rBtn = document.getElementById('btn-reach-counter');
+        rBtn.className = card.reach
+          ? "px-2.5 py-1 rounded-lg text-xs font-bold border bg-emerald-700 border-emerald-400 text-white"
+          : "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-slate-800 border-slate-600 text-slate-300";
+
+        const dBtn = document.getElementById('btn-deathtouch-counter');
+        dBtn.className = card.deathtouch
+          ? "px-2.5 py-1 rounded-lg text-xs font-bold border bg-purple-700 border-purple-400 text-white"
+          : "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-slate-800 border-slate-600 text-slate-300";
+      } else {
+        countersBox.classList.add('hidden');
+      }
+
+      const actions = document.getElementById('modal-actions');
+      actions.innerHTML = '';
+
+      const addBtn = (label, cls, fn) => {
+        const b = document.createElement('button');
+        b.className = `py-2 px-3 rounded-xl font-bold text-xs transition active:scale-95 ${cls}`;
+        b.textContent = label;
+        b.onclick = fn;
+        actions.appendChild(b);
+      };
+
+      if (card.zone === 'hand') {
+        const isSpell = card.type.startsWith('Instant') || card.type.startsWith('Sorcery');
+        if (isSpell) {
+          addBtn('Cast → Graveyard', 'col-span-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950', () => moveCard(card.id, 'graveyard'));
+        } else {
+          addBtn('Play to Battlefield', 'col-span-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950', () => moveCard(card.id, 'battlefield'));
+        }
+        addBtn('Discard (Graveyard)', 'bg-amber-900/70 hover:bg-amber-800 text-amber-100', () => moveCard(card.id, 'graveyard'));
+        addBtn('Exile', 'bg-purple-900/70 hover:bg-purple-800 text-purple-100', () => moveCard(card.id, 'exile'));
+      } else if (card.zone === 'command') {
+        addBtn('Cast Commander', 'col-span-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950', () => moveCard(card.id, 'battlefield'));
+      } else if (card.zone === 'battlefield') {
+        addBtn(card.tapped ? 'Untap' : 'Tap', 'bg-amber-600 hover:bg-amber-500 text-slate-950', () => { toggleTap(card.id); openCardModal(card.id); });
+        addBtn(card.isToken ? 'Destroy Token' : 'Send to Graveyard', 'bg-rose-800 hover:bg-rose-700 text-white', () => moveCard(card.id, 'graveyard'));
+        addBtn('Return to Hand', 'bg-slate-700 hover:bg-slate-600 text-white', () => moveCard(card.id, 'hand'));
+        if (card.isCommander) {
+          addBtn('Command Zone', 'bg-emerald-900 hover:bg-emerald-800 text-emerald-100', () => moveCard(card.id, 'command'));
+        } else {
+          addBtn('Exile', 'bg-purple-900/80 hover:bg-purple-800 text-purple-100', () => moveCard(card.id, 'exile'));
+        }
+      } else {
+        addBtn('Put to Hand', 'bg-emerald-600 hover:bg-emerald-500 text-slate-950', () => moveCard(card.id, 'hand'));
+        addBtn('Put to Battlefield', 'bg-teal-600 hover:bg-teal-500 text-slate-950', () => moveCard(card.id, 'battlefield'));
+        if (card.zone !== 'graveyard') addBtn('Graveyard', 'bg-amber-900/80 text-amber-100', () => moveCard(card.id, 'graveyard'));
+        if (card.isCommander) addBtn('Command Zone', 'bg-emerald-900 text-emerald-100', () => moveCard(card.id, 'command'));
+      }
+
+      document.getElementById('card-modal').classList.remove('hidden');
+      document.getElementById('card-modal').classList.add('flex');
     }
 
     function render() {
@@ -961,8 +1087,15 @@
       document.getElementById('cmd-tax').textContent = state.commanderTax;
 
       const dev = calculateDevotion();
-      document.getElementById('devotion-g').textContent = dev.g;
-      document.getElementById('devotion-b').textContent = dev.b;
+      document.getElementById('devotion-combined').textContent = dev.combined;
+      const statusBadge = document.getElementById('kurotsuta-status-badge');
+      if (dev.combined >= 6) {
+        statusBadge.textContent = 'Creature (6+)';
+        statusBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-900/90 text-emerald-200 border border-emerald-500';
+      } else {
+        statusBadge.textContent = 'Enchantment';
+        statusBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700';
+      }
 
       const badge = document.getElementById('emblem-badge');
       const bar = document.getElementById('active-emblem-bar');
@@ -1012,14 +1145,26 @@
         permEl.innerHTML = `<p class="text-xs text-slate-500 italic p-4">Your battlefield is empty. Play cards from your hand below!</p>`;
       } else {
         permEl.innerHTML = perms.map(c => {
+          const isKurotsutaEnchantmentOnly = c.isCommander && dev.combined < 6;
+          const buffs = getStaticBuffs(c, dev);
           let ptBadge = '';
           if (c.pt) {
             const [p, t] = c.pt.split('/').map(Number);
-            const modT = (state.emblem === 'front' && c.type.includes('Creature')) ? -1 : 0;
-            const liveP = p + c.plus1;
-            const liveT = t + c.plus1 + modT;
-            ptBadge = `<span class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-[11px] font-extrabold ${c.plus1 > 0 ? 'text-emerald-300' : 'text-white'}">${liveP}/${liveT}</span>`;
+            const liveP = p + c.plus1 + buffs.bonusP;
+            const liveT = t + c.plus1 + buffs.bonusT;
+            const totalModP = c.plus1 + buffs.bonusP;
+            const totalModT = c.plus1 + buffs.bonusT;
+            const ptColor = (totalModP > 0 || totalModT > 0) ? 'text-emerald-300' : (totalModP < 0 || totalModT < 0) ? 'text-rose-300' : 'text-white';
+            if (isKurotsutaEnchantmentOnly) {
+              ptBadge = `<span class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-[10px] font-semibold text-slate-500">Enchantment</span>`;
+            } else {
+              ptBadge = `<span class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-[11px] font-extrabold ${ptColor}">${liveP}/${liveT}</span>`;
+            }
           }
+
+          const staticModLabel = (buffs.bonusP !== 0 || buffs.bonusT !== 0)
+            ? `${buffs.bonusP >= 0 ? '+' : ''}${buffs.bonusP}/${buffs.bonusT >= 0 ? '+' : ''}${buffs.bonusT}`
+            : '';
 
           return `
             <div onclick="toggleTap('${c.id}')" class="w-40 rounded-xl p-2.5 bg-[#17221b] border ${c.isCommander ? 'border-emerald-500' : 'border-slate-700'} shadow-md cursor-pointer transition-transform duration-150 ${c.tapped ? 'tapped opacity-75' : 'hover:border-emerald-400'}">
@@ -1029,8 +1174,11 @@
               <div class="text-[10px] text-slate-400 truncate mt-0.5">${c.type.replace('Creature — ', '').replace('Legendary ', '')}</div>
               <div class="flex flex-wrap gap-1 mt-1.5 min-h-[18px]">
                 ${c.plus1 > 0 ? `<span class="text-[10px] font-bold bg-emerald-800/90 text-emerald-100 px-1.5 py-0.2 rounded-full">+${c.plus1}/+${c.plus1}</span>` : ''}
+                ${staticModLabel ? `<span class="text-[10px] font-bold ${buffs.bonusT < 0 && buffs.bonusP === 0 ? 'bg-rose-900/90 text-rose-100' : 'bg-teal-800/90 text-teal-100'} px-1.5 py-0.2 rounded-full" title="Static continuous buff/debuff">${staticModLabel}</span>` : ''}
+                ${(c.genericCounters || 0) > 0 ? `<span class="text-[10px] font-bold bg-amber-800/90 text-amber-100 px-1.5 py-0.2 rounded-full">${c.genericCounters} Counter${c.genericCounters > 1 ? 's' : ''}</span>` : ''}
                 ${c.reach ? `<span class="text-[10px] font-bold bg-sky-900 text-sky-200 px-1.5 rounded-full">Reach</span>` : ''}
                 ${c.deathtouch ? `<span class="text-[10px] font-bold bg-purple-900 text-purple-200 px-1.5 rounded-full">Deathtouch</span>` : ''}
+                ${buffs.grantedKeywords.map(kw => `<span class="text-[10px] font-bold bg-indigo-900/90 text-indigo-200 px-1.5 py-0.2 rounded-full" title="Granted by static ability">${kw}</span>`).join('')}
               </div>
               <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-800">
                 <button onclick="event.stopPropagation(); openCardModal('${c.id}')" class="text-[10px] font-semibold text-emerald-400 hover:underline">
@@ -1074,7 +1222,7 @@
             <p class="text-[10px] text-slate-300 mt-1.5 line-clamp-4 leading-snug">${c.text}</p>
           </div>
           <div class="flex items-center justify-between mt-2 pt-1 border-t border-slate-800/80 text-[10px] text-slate-400">
-            <span>${c.hasCycling ? 'Tap / Cycle {2}' : 'Tap to play'}</span>
+            <span>Tap to play</span>
             ${c.pt ? `<span class="font-bold text-white">${c.pt}</span>` : ''}
           </div>
         </div>
@@ -1087,10 +1235,11 @@
       newGame,
       mulligan,
       drawCards,
-      cycleCard,
       changeLife,
       millCards,
       untapAll,
+      doubleAllCounters,
+      doubleCardCounters,
       shuffleLibrary,
       moveCard,
       toggleTap,
@@ -1107,7 +1256,7 @@
       closeModalOnBackdrop
     });
 
-    window.onload = async () => {
+    async function bootPlaymat() {
       try {
         if (auth) {
           if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -1119,7 +1268,7 @@
           }
         }
         const restored = await loadGameState();
-        if (restored) {
+        if (restored && Array.isArray(state.cards) && state.cards.length > 0) {
           render();
           showToast("Restored ongoing game!");
           return;
@@ -1128,7 +1277,13 @@
         console.error("Init restore error:", err);
       }
       newGame();
-    };
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootPlaymat);
+    } else {
+      bootPlaymat();
+    }
   </script>
 </body>
 </html>
