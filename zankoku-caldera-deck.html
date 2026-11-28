@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zankoku Caldera — Digital Playmat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #110c0a;
+      color: #f1f5f9;
+      user-select: none;
+    }
+    .tapped {
+      transform: rotate(90deg);
+      margin-left: 16px;
+      margin-right: 16px;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #17110e;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #47281e;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col overflow-x-hidden">
+
+  <!-- Top HUD / Controls -->
+  <header class="bg-[#18110e] border-b border-orange-900/60 px-3 py-2.5 flex flex-wrap items-center justify-between gap-2 sticky top-0 z-30 shadow-lg">
+    <div class="flex items-center gap-3">
+      <div>
+        <h1 class="text-sm sm:text-base font-extrabold text-orange-400 tracking-tight flex items-center gap-1.5">
+          <span>🔥</span> Cinder-Cairn Playmat
+        </h1>
+        <p class="text-[11px] text-stone-400">100-Card Gruul Glass Cannon &amp; Graveyard Diversity</p>
+      </div>
+
+      <!-- Life Counter -->
+      <div class="flex items-center bg-[#231914] border border-orange-800/60 rounded-xl px-2.5 py-1 gap-2">
+        <span class="text-[11px] font-semibold uppercase text-orange-300/80">You</span>
+        <button onclick="changeLife('you', -1)" class="w-7 h-7 rounded-lg bg-rose-950/80 hover:bg-rose-800 text-rose-200 font-bold text-base flex items-center justify-center active:scale-95">−</button>
+        <span id="life-total" class="text-lg font-extrabold text-white min-w-[2.2rem] text-center">40</span>
+        <button onclick="changeLife('you', 1)" class="w-7 h-7 rounded-lg bg-emerald-900/80 hover:bg-emerald-700 text-emerald-100 font-bold text-base flex items-center justify-center active:scale-95">+</button>
+      </div>
+
+      <!-- 1v1 Opponent Life Counter -->
+      <div class="flex items-center bg-[#231914] border border-rose-800/60 rounded-xl px-2.5 py-1 gap-2">
+        <span class="text-[11px] font-semibold uppercase text-rose-300/80">Opp</span>
+        <button onclick="changeLife('opp', -1)" class="w-7 h-7 rounded-lg bg-rose-950/80 hover:bg-rose-800 text-rose-200 font-bold text-base flex items-center justify-center active:scale-95">−</button>
+        <span id="opp-life-total" class="text-lg font-extrabold text-white min-w-[2.2rem] text-center">40</span>
+        <button onclick="changeLife('opp', 1)" class="w-7 h-7 rounded-lg bg-emerald-900/80 hover:bg-emerald-700 text-emerald-100 font-bold text-base flex items-center justify-center active:scale-95">+</button>
+      </div>
+
+      <!-- Live Graveyard Creature Diversity Tracker -->
+      <div class="hidden xl:flex items-center bg-[#231914] border border-amber-800/60 rounded-xl px-3 py-1 gap-2 text-xs" title="Homura-Ryū grants +1/+0 per creature in your graveyard that doesn't share a creature type. Shijū-no-Kizuna reduces costs by {1} per type.">
+        <span class="text-stone-300">GY Creature Types:</span>
+        <span id="gy-type-count" class="font-extrabold text-amber-400">0</span>
+        <span id="gy-type-list" class="text-[10px] text-stone-400 max-w-[200px] truncate">(None)</span>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex flex-wrap items-center gap-1.5">
+      <button id="new-game-btn" onclick="newGame()" class="px-3 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-stone-950 font-bold text-xs shadow active:scale-95 transition">
+        New Game (Draw 7)
+      </button>
+      <button onclick="mulligan()" class="px-2.5 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-medium text-xs border border-stone-700 active:scale-95 transition">
+        Mulligan
+      </button>
+      <button onclick="untapAll()" class="px-2.5 py-1.5 rounded-xl bg-amber-500/90 hover:bg-amber-400 text-stone-950 font-bold text-xs active:scale-95 transition">
+        Untap All
+      </button>
+      <button onclick="openTopDeckModal()" class="px-2.5 py-1.5 rounded-xl bg-red-900/90 hover:bg-red-800 text-red-100 font-bold text-xs border border-red-700/70 active:scale-95 transition" title="Homura-Ryū & Arashi-Kō: Look at or play the top card of your library">
+        👁️ Top Deck
+      </button>
+      <button onclick="openTokenModal()" class="px-2.5 py-1.5 rounded-xl bg-amber-900/80 hover:bg-amber-800 text-amber-100 font-semibold text-xs border border-amber-700/70 active:scale-95 transition">
+        + Treasure
+      </button>
+      <button onclick="toggleTempBuffModal()" class="px-2.5 py-1.5 rounded-xl bg-orange-950/90 hover:bg-orange-900 text-orange-200 font-semibold text-xs border border-orange-700/70 active:scale-95 transition">
+        Turn Buffs: <span id="turn-buff-badge" class="underline">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Active Turn Buffs Banner (if any active) -->
+  <div id="active-buff-bar" class="hidden bg-orange-950/60 border-b border-orange-800/60 px-4 py-1.5 text-xs flex items-center justify-between gap-2">
+    <div id="active-buff-summary" class="text-orange-200 font-medium"></div>
+    <button onclick="clearTurnBuffs()" class="text-[11px] bg-orange-900/80 hover:bg-orange-800 px-2.5 py-0.5 rounded-lg text-orange-100 font-bold shrink-0">End Turn / Clear Buffs</button>
+  </div>
+
+  <!-- Main Playmat Area -->
+  <main class="flex-1 flex flex-col lg:flex-row gap-3 p-3 max-w-[1600px] w-full mx-auto">
+
+    <!-- Left Sidebar: Command Zone, Library, Graveyard, Exile -->
+    <aside class="w-full lg:w-64 shrink-0 flex flex-row lg:flex-col gap-2.5 overflow-x-auto pb-1">
+
+      <!-- Command Zone -->
+      <div class="bg-[#18110e] border border-orange-800/60 rounded-2xl p-2.5 min-w-[215px] lg:min-w-0">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-orange-400">Command Zone</span>
+          <span class="text-[11px] text-stone-400">Tax: +<span id="cmd-tax">0</span></span>
+        </div>
+        <div id="command-zone-list" class="space-y-2"></div>
+      </div>
+
+      <!-- Library & Top-Deck Peek -->
+      <div class="bg-[#18110e] border border-stone-800 rounded-2xl p-2.5 min-w-[205px] lg:min-w-0 flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-stone-300">Library</span>
+          <span id="library-count" class="text-xs font-extrabold bg-stone-800 px-2 py-0.5 rounded-full text-orange-400">99</span>
+        </div>
+
+        <!-- Live Top Card Peek Box (Homura-Ryū / Arashi-Kō passive) -->
+        <div id="top-card-peek-box" class="mb-2 p-2 rounded-xl bg-[#110c0a] border border-orange-900/60">
+          <div class="flex items-center justify-between text-[10px] text-orange-300/80 font-bold uppercase mb-0.5">
+            <span>Top Card Peek</span>
+            <button onclick="toggleTopPeekVisibility()" id="toggle-peek-btn" class="text-stone-400 hover:text-white underline">Hide</button>
+          </div>
+          <div id="top-card-preview" class="text-xs font-bold text-amber-200 truncate cursor-pointer hover:underline" onclick="openTopDeckModal()">
+            —
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-1.5">
+          <button onclick="drawCards(1)" class="col-span-2 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-stone-950 font-bold text-xs active:scale-95 transition">
+            Draw Card
+          </button>
+          <button onclick="scryTop(1)" class="py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-200 text-xs font-medium active:scale-95" title="Inspect top card to keep on top or put on bottom">
+            Scry 1
+          </button>
+          <button onclick="millCards(1)" class="py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-medium active:scale-95">
+            Mill 1
+          </button>
+          <button onclick="millCards(3)" class="py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-medium active:scale-95">
+            Mill 3
+          </button>
+          <button onclick="millCards(4)" class="py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-medium active:scale-95">
+            Mill 4
+          </button>
+          <button onclick="shuffleLibrary()" class="py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-medium active:scale-95">
+            Shuffle
+          </button>
+          <button onclick="openZoneBrowser('library')" class="py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-orange-300 text-xs font-medium active:scale-95">
+            Search
+          </button>
+        </div>
+      </div>
+
+      <!-- Graveyard & Exile Counters -->
+      <div class="bg-[#18110e] border border-stone-800 rounded-2xl p-2.5 min-w-[185px] lg:min-w-0 flex flex-col gap-2 justify-center">
+        <button onclick="openZoneBrowser('graveyard')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-[#221814] hover:bg-[#2c1f1a] border border-stone-700/80 transition">
+          <span class="text-xs font-semibold text-stone-200">🪦 Graveyard</span>
+          <span id="graveyard-count" class="text-xs font-extrabold bg-stone-800 px-2 py-0.5 rounded-full text-amber-300">0</span>
+        </button>
+        <button onclick="openZoneBrowser('exile')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-[#221814] hover:bg-[#2c1f1a] border border-stone-700/80 transition">
+          <span class="text-xs font-semibold text-stone-200">🔥 Exile / Impulse</span>
+          <span id="exile-count" class="text-xs font-extrabold bg-stone-800 px-2 py-0.5 rounded-full text-red-300">0</span>
+        </button>
+      </div>
+
+    </aside>
+
+    <!-- Center/Right: Battlefield & Hand -->
+    <section class="flex-1 flex flex-col gap-3 min-w-0">
+
+      <!-- Battlefield: Creatures, Artifacts, Enchantments -->
+      <div class="bg-[#150f0c] border border-orange-900/50 rounded-2xl p-3 flex-1 min-h-[260px] flex flex-col">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-orange-400/90">Battlefield — Permanents</h2>
+          <span class="text-[11px] text-stone-400">Tap card to Tap/Untap • Click "Inspect / Buff" for counters, +X/+0 &amp; zones</span>
+        </div>
+        <div id="battlefield-permanents" class="flex flex-wrap gap-3 items-start content-start flex-1">
+          <p class="text-xs text-stone-500 italic p-4">Your battlefield is empty. Play cards from your hand or top of library!</p>
+        </div>
+      </div>
+
+      <!-- Battlefield: Lands -->
+      <div class="bg-[#130d0b] border border-stone-800/90 rounded-2xl p-3 min-h-[115px]">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-amber-400/80">Lands (<span id="land-count">0</span>)</h2>
+          <span class="text-[11px] text-stone-400">Tap any land to toggle tapped state</span>
+        </div>
+        <div id="battlefield-lands" class="flex flex-wrap gap-2 items-start"></div>
+      </div>
+
+      <!-- Hand Zone -->
+      <div class="bg-[#19120f] border border-orange-800/60 rounded-2xl p-3 shadow-inner">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-orange-300">
+            Your Hand (<span id="hand-count">0</span>)
+          </h2>
+          <span class="text-[11px] text-stone-400">Click a card to inspect, cast, discard, or move</span>
+        </div>
+        <div id="hand-zone" class="flex gap-2.5 overflow-x-auto pb-2 min-h-[145px] items-stretch"></div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Card Inspector & Action Modal -->
+  <div id="card-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4 z-50" onclick="closeModalOnBackdrop(event, 'card-modal')">
+    <div class="bg-[#1c1410] border border-orange-700/70 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <span id="modal-zone-tag" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-orange-950 text-orange-300 border border-orange-800">Zone</span>
+          <h3 id="modal-card-name" class="text-lg font-extrabold text-white mt-1">Card Name</h3>
+          <p id="modal-card-type" class="text-xs text-orange-300/90 font-medium">Card Type</p>
+        </div>
+        <div class="text-right">
+          <span id="modal-card-cost" class="text-xs font-bold bg-stone-800 px-2.5 py-1 rounded-lg text-amber-300 border border-stone-700">Cost</span>
+          <div id="modal-card-pt" class="text-sm font-extrabold text-white mt-1.5"></div>
+        </div>
+      </div>
+
+      <div class="bg-[#110c0a] border border-stone-800 rounded-xl p-3 text-xs text-stone-200 leading-relaxed whitespace-pre-line" id="modal-card-text"></div>
+
+      <!-- Counters & Temp Buffs Control (shown when on battlefield) -->
+      <div id="modal-counters-box" class="bg-[#231914] border border-stone-700/80 rounded-xl p-3 space-y-2.5 hidden">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-emerald-300">+1/+1 Counters</span>
+          <div class="flex items-center gap-1.5">
+            <button onclick="adjustCounter('plus1', -1)" class="w-8 h-8 rounded-lg bg-stone-800 hover:bg-stone-700 text-white font-bold">−</button>
+            <span id="modal-plus1-val" class="text-sm font-extrabold text-white w-6 text-center">0</span>
+            <button onclick="adjustCounter('plus1', 1)" class="w-8 h-8 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold">+</button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-stone-700/60">
+          <span class="text-xs font-bold text-amber-300">+1/+0 Counters (Mori-Kuma / Chi-no-Kyōmei)</span>
+          <div class="flex items-center gap-1.5">
+            <button onclick="adjustCounter('plus10', -1)" class="w-8 h-8 rounded-lg bg-stone-800 hover:bg-stone-700 text-white font-bold">−</button>
+            <span id="modal-plus10-val" class="text-sm font-extrabold text-white w-6 text-center">0</span>
+            <button onclick="adjustCounter('plus10', 1)" class="w-8 h-8 rounded-lg bg-amber-700 hover:bg-amber-600 text-white font-bold">+</button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-stone-700/60">
+          <span class="text-xs font-bold text-orange-300">Until EOT Power (+X/+0)</span>
+          <div class="flex items-center gap-1.5">
+            <button onclick="adjustCounter('tempPower', -1)" class="w-8 h-8 rounded-lg bg-stone-800 hover:bg-stone-700 text-white font-bold">−</button>
+            <span id="modal-temp-power-val" class="text-sm font-extrabold text-white w-6 text-center">0</span>
+            <button onclick="adjustCounter('tempPower', 1)" class="w-8 h-8 rounded-lg bg-orange-700 hover:bg-orange-600 text-white font-bold">+</button>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-1.5 pt-2 border-t border-stone-700/60">
+          <button onclick="toggleKeywordFlag('tempDoubleStrike')" id="btn-kw-ds" class="px-2 py-1 rounded-lg text-[11px] font-semibold border transition">
+            Double Strike (EOT)
+          </button>
+          <button onclick="toggleKeywordFlag('tempTrample')" id="btn-kw-trample" class="px-2 py-1 rounded-lg text-[11px] font-semibold border transition">
+            Trample (EOT)
+          </button>
+          <button onclick="toggleKeywordFlag('tempMenace')" id="btn-kw-menace" class="px-2 py-1 rounded-lg text-[11px] font-semibold border transition">
+            Menace (EOT)
+          </button>
+          <button onclick="toggleKeywordFlag('reanimatedExile')" id="btn-kw-reanim" class="px-2 py-1 rounded-lg text-[11px] font-semibold border transition" title="Homura-Ryū ability: +3/-3, Haste, Trample, Double Strike, Menace, Exile at end of combat">
+            Homura-Ryū Reanimate (+3/-3)
+          </button>
+        </div>
+      </div>
+
+      <!-- Zone Movement Actions -->
+      <div id="modal-actions" class="grid grid-cols-2 gap-2 pt-1"></div>
+
+      <button onclick="closeModal('card-modal')" class="w-full py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold">
+        Close
+      </button>
+    </div>
+  </div>
+
+  <!-- Top Deck / Scry / Mill Modal -->
+  <div id="topdeck-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4 z-50" onclick="closeModalOnBackdrop(event, 'topdeck-modal')">
+    <div class="bg-[#1c1410] border border-orange-700/70 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-3">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-extrabold text-orange-300">Top of Library Manipulation</h3>
+        <button onclick="closeModal('topdeck-modal')" class="text-xs text-stone-400 hover:text-white px-2 py-1">✕</button>
+      </div>
+      <p class="text-xs text-stone-400">Homura-Ryū &amp; Arashi-Kō let you look at the top card anytime and cast/play from the top once per turn.</p>
+
+      <div id="topdeck-card-display" class="bg-[#110c0a] border border-stone-800 rounded-xl p-3.5 space-y-1.5"></div>
+
+      <div id="topdeck-actions" class="grid grid-cols-2 gap-2 pt-1"></div>
+
+      <button onclick="closeModal('topdeck-modal')" class="w-full py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold">Close</button>
+    </div>
+  </div>
+
+  <!-- Token Spawner Modal -->
+  <div id="token-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4 z-50" onclick="closeModalOnBackdrop(event, 'token-modal')">
+    <div class="bg-[#1c1410] border border-amber-700/70 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-3">
+      <h3 class="text-base font-extrabold text-amber-300">Create Token on Battlefield</h3>
+      <p class="text-xs text-stone-400">Spawn tokens created by Kaze-Ko, Kumo-Gami, and Kaminari-no-Shōgeki:</p>
+
+      <div class="space-y-2">
+        <button onclick="spawnToken('treasure')" class="w-full bg-[#110c0a] hover:bg-[#231914] border border-stone-800 rounded-xl p-3 flex items-center justify-between text-left transition">
+          <div>
+            <p class="text-xs font-bold text-amber-300">Treasure Token</p>
+            <p class="text-[11px] text-stone-400">Artifact Token — Treasure ({T}, Sacrifice: Add one mana of any color.)</p>
+          </div>
+          <span class="px-3 py-1 rounded-lg bg-amber-600 text-stone-950 font-bold text-xs">+1</span>
+        </button>
+
+        <button onclick="spawnToken('treasure2')" class="w-full bg-[#110c0a] hover:bg-[#231914] border border-stone-800 rounded-xl p-3 flex items-center justify-between text-left transition">
+          <div>
+            <p class="text-xs font-bold text-orange-300">Two Treasure Tokens</p>
+            <p class="text-[11px] text-stone-400">Kaminari-no-Shōgeki mode</p>
+          </div>
+          <span class="px-3 py-1 rounded-lg bg-orange-600 text-stone-950 font-bold text-xs">+2</span>
+        </button>
+      </div>
+
+      <button onclick="closeModal('token-modal')" class="w-full py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold">Close</button>
+    </div>
+  </div>
+
+  <!-- Team / Turn Buffs Modal -->
+  <div id="buff-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4 z-50" onclick="closeModalOnBackdrop(event, 'buff-modal')">
+    <div class="bg-[#1c1410] border border-orange-700/70 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-3">
+      <h3 class="text-base font-extrabold text-orange-300">Team-Wide Until-End-of-Turn Buffs</h3>
+      <p class="text-xs text-stone-400">Toggle temporary team buffs from your triggers (Kemonogami, Orochi-Kiba, Homura-no-Kōrin, Mōjū-no-Toppa):</p>
+
+      <div class="space-y-2">
+        <div class="bg-[#110c0a] border border-stone-800 rounded-xl p-3 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-bold text-orange-300">Team +1/+0 Counters / Triggers</p>
+            <p class="text-[11px] text-stone-400">Kemonogami (+1/+0 on exile), Orochi-Kiba (+1/+0 per milled type), Homura-no-Kōrin (+1/+0)</p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="adjustTeamPower(-1)" class="w-8 h-8 rounded-lg bg-stone-800 hover:bg-stone-700 text-white font-bold">−</button>
+            <span id="modal-team-power-val" class="text-sm font-extrabold text-white w-6 text-center">0</span>
+            <button onclick="adjustTeamPower(1)" class="w-8 h-8 rounded-lg bg-orange-600 hover:bg-orange-500 text-stone-950 font-bold">+</button>
+          </div>
+        </div>
+
+        <button onclick="applyTeamPreset(2, true, true)" class="w-full text-left p-3 rounded-xl border border-red-800/70 bg-red-950/20 hover:border-red-500 transition">
+          <div class="text-xs font-bold text-red-300">+ Mōjū-no-Toppa (+2/+0, Trample, Haste)</div>
+          <div class="text-[11px] text-stone-300 mt-0.5">Adds +2/+0 and grants Trample &amp; Haste to your board until end of turn.</div>
+        </button>
+
+        <button onclick="applyTeamPreset(2, true, false)" class="w-full text-left p-3 rounded-xl border border-amber-800/70 bg-amber-950/20 hover:border-amber-500 transition">
+          <div class="text-xs font-bold text-amber-300">+ Kaminari-no-Shōgeki (+2/+0 &amp; Trample)</div>
+          <div class="text-[11px] text-stone-300 mt-0.5">Adds +2/+0 and grants Trample to your board until end of turn.</div>
+        </button>
+
+        <button onclick="clearTurnBuffs()" class="w-full py-2 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-800 text-rose-200 text-xs font-bold">
+          Clear All Turn Buffs (End of Turn)
+        </button>
+      </div>
+
+      <button onclick="closeModal('buff-modal')" class="w-full py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold">Close</button>
+    </div>
+  </div>
+
+  <!-- Zone Browser Modal (Library Search, Graveyard, Exile) -->
+  <div id="browser-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4 z-50" onclick="closeModalOnBackdrop(event, 'browser-modal')">
+    <div class="bg-[#1c1410] border border-stone-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl flex flex-col max-h-[82vh]">
+      <div class="flex items-center justify-between mb-3">
+        <h3 id="browser-title" class="text-base font-extrabold text-white">Zone Browser</h3>
+        <button onclick="closeModal('browser-modal')" class="text-xs text-stone-400 hover:text-white px-2 py-1">✕</button>
+      </div>
+      <input id="browser-search" type="text" oninput="renderBrowserList()" placeholder="Filter by card name, type (Dragon, Hydra, Beast, Elemental)..." class="w-full bg-[#110c0a] border border-stone-700 rounded-xl px-3 py-2 text-xs text-white mb-3 focus:outline-none focus:border-orange-500" />
+      <div id="browser-list" class="flex-1 overflow-y-auto space-y-1.5 pr-1"></div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-4 right-4 bg-orange-950 border border-orange-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xl opacity-0 pointer-events-none transition-opacity duration-200 z-50"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'cinder-cairn-playmat';
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+    let db = null;
+    let auth = null;
+    let currentUser = null;
+
+    if (firebaseConfig) {
+      const app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+      auth = getAuth(app);
+    }
+
+    // Complete 100-Card Custom Deck Database: Homura-Ryū, Sovereign of the Cinder-Cairn
+    const DECK_BLUEPRINT = [
+      // 1. Commander (1)
+      { name: "Homura-Ryū, Sovereign of the Cinder-Cairn", cost: "{3}{R}{R}{G}", type: "Legendary Creature — Elder Dragon Beast", pt: "8/4", isCommander: true, text: "Flying, trample, haste.\nYou may look at the top card of your library any time. Once each turn, you may play a land or cast a spell from the top of your library.\nCreatures you control get +1/+0 for each creature card in your graveyard that doesn't share a creature type with them.\nWhenever a creature you control deals combat damage, scry 1, then mill 1.\n{3}{R}{G}, Exile four creature cards with different creature types from your graveyard: Return target creature card from your graveyard to the battlefield tapped and attacking. It gains haste, trample, double strike, and menace, and gets +3/-3 until end of turn. Exile it at end of combat." },
+
+      // 2. Tribal Guardians (4)
+      { name: "Yōsei-Kaze, Flame-Path Vanguard", cost: "{3}{R}{G}", type: "Legendary Creature — Elemental Scout", pt: "5/3", text: "Haste, trample, ward {2}.\nThe first spell you cast during your turn has cascade.\nCreature spells you cast from anywhere other than your hand cost {1} less to cast.\n{2}{R/G}: Shuffle your library, then reveal the top card. If it's a creature card, you may cast it by paying its mana cost, and it gains delve until end of turn. Otherwise, put it into your graveyard. Activate only once each turn." },
+      { name: "Orochi-Kiba, Multi-Strike Terror", cost: "{4}{R}{G}", type: "Legendary Creature — Hydra Berserker", pt: "9/3", text: "First strike, trample, vigilance.\nWhenever Orochi-Kiba attacks, mill four cards. Whenever you mill one or more cards that way, creatures you control get +1/+0 until end of turn for each card type among cards milled this way.\n{3}{R}{G}: Orochi-Kiba deals damage equal to its power to any target. Damage dealt this way can't be modified by abilities of other creatures you control. Then mill a card for each 1 damage dealt this way." },
+      { name: "Kemonogami, Apex of the Great Maw", cost: "{3}{G}{G}", type: "Legendary Creature — Beast", pt: "6/4", text: "Haste, menace.\nWhenever you exile one or more creature cards, creatures you control get +1/+0 until end of turn.\nIf Kemonogami would deal combat damage to a player, it deals double that damage to that player instead.\n{1}{G}: Target creature you control gains trample until end of turn." },
+      { name: "Ryūjin, Scale-Lord of the Ash-Sky", cost: "{4}{R}{R}", type: "Legendary Creature — Dragon", pt: "7/4", text: "Flying, haste, trample, vigilance.\nWhenever Ryūjin deals combat damage to a player, you may put target creature card with mana value X or less from your graveyard on top of your library, where X is the amount of damage dealt to that player.\nCreature cards in your graveyard have retrace. (You may cast creature cards from your graveyard by discarding a land card in addition to paying their other costs.)\n{2}{R}{G}: Ryūjin fights target creature an opponent controls." },
+
+      // 3. Pillar 1: Elementals — Library Setup & Ramp (6)
+      { name: "Hi-no-Ko, Ember-Spark Darter", cost: "{R}", type: "Creature — Elemental Scout", pt: "2/1", text: "Haste.\nWhenever Hi-no-Ko attacks, scry 1.\nSacrifice Hi-no-Ko: Add {R}{G}. Spend this mana only to cast creature spells or activate abilities of creatures." },
+      { name: "Mori-Kaze, Canopy-Breeze Tender", cost: "{1}{G}", type: "Creature — Elemental Druid", pt: "2/1", text: "{T}: Add {R} or {G}.\n{1}{G}, {T}: Look at the top two cards of your library. Put one back on top and the other into your graveyard." },
+      { name: "Kazemai, Gale-Step Pathfinder", cost: "{1}{G}", type: "Creature — Elemental Scout", pt: "3/1", text: "Haste.\nWhen Kazemai enters the battlefield, search your library for a basic land card, reveal it, then shuffle and put that card on top of your library." },
+      { name: "Kasai-Jin, Cinder-Vein Channeler", cost: "{2}{R}", type: "Creature — Elemental Shaman", pt: "4/2", text: "Trample, haste.\nWhenever Kasai-Jin deals combat damage to a player, exile the top card of your library. Until the end of your next turn, you may play that card." },
+      { name: "Arashi-Kō, Storm-Crest Conduit", cost: "{2}{R}{G}", type: "Creature — Elemental", pt: "5/2", text: "Haste, trample.\nYou may look at the top card of your library any time.\nWhenever you cast a spell from anywhere other than your hand, add {R}{G} until end of turn. This ability triggers only once each turn." },
+      { name: "Tenchi-Gami, World-Root Incarnation", cost: "{4}{R}{G}{G}", type: "Creature — Elemental Avatar", pt: "10/4", text: "Trample, haste.\nWhen Tenchi-Gami enters the battlefield, reveal the top five cards of your library. Put all land cards revealed this way onto the battlefield tapped, one nonland card on top of your library, and the rest into your graveyard." },
+
+      // 4. Pillar 2: Hydras — Self-Mill & Combat Catalysts (10)
+      { name: "Hebi-Ko, Fang-Sprout Hatchling", cost: "{G}", type: "Creature — Hydra", pt: "2/1", text: "Haste.\nWhenever Hebi-Ko attacks, mill two cards.\n{1}{R}: Hebi-Ko gains first strike until end of turn." },
+      { name: "Doku-Kiba, Venom-Root Skirmisher", cost: "{1}{G}", type: "Creature — Hydra", pt: "3/1", text: "Deathtouch, haste.\nWhen Doku-Kiba enters the battlefield, mill two cards. If a creature card was milled this way, Doku-Kiba gets +1/+0 until end of turn." },
+      { name: "Numa-Orochi, Mire-Lash Striker", cost: "{1}{R}", type: "Creature — Hydra", pt: "3/2", text: "Trample.\nWhenever Numa-Orochi deals combat damage to a player, mill three cards, then add {R} or {G} until end of turn." },
+      { name: "Mitsu-Kubi, Three-Fang Ravager", cost: "{1}{R}{G}", type: "Creature — Hydra", pt: "4/2", text: "First strike, trample.\nWhenever Mitsu-Kubi attacks, mill three cards. If two or more card types were milled this way, Mitsu-Kubi gains double strike until end of turn." },
+      { name: "Kazan-Hebi, Cinder-Scale Thrasher", cost: "{2}{R}", type: "Creature — Hydra", pt: "5/1", text: "Haste, menace.\nWhen Kazan-Hebi dies, mill four cards." },
+      { name: "Kiba-Arashi, Fang-Storm Hydra", cost: "{2}{R}{G}", type: "Creature — Hydra", pt: "6/2", text: "First strike, trample, haste.\nWhenever Kiba-Arashi deals combat damage, mill cards equal to the damage dealt.\n{1}{G}, {T}: Put target creature card with mana value 4 or less that was milled this turn from your graveyard on top of your library." },
+      { name: "Yami-Orochi, Grave-Maw Coil", cost: "{3}{G}{G}", type: "Creature — Hydra", pt: "7/3", text: "Trample, vigilance.\nWhenever one or more creature cards are put into your graveyard from your library, Yami-Orochi gets +2/+0 and gains menace until end of turn. This ability triggers only once each turn." },
+      { name: "Gōka-Kubi, Ember-Hydra Berserker", cost: "{3}{R}{R}", type: "Creature — Hydra", pt: "8/2", text: "Haste, trample.\nWhenever Gōka-Kubi attacks, you may mill three cards. When you do, Gōka-Kubi deals 3 damage to target creature an opponent controls." },
+      { name: "Nanatsu-Orochi, Seven-Headed Calamity", cost: "{4}{R}{G}", type: "Creature — Hydra", pt: "9/4", text: "First strike, trample, haste.\nWhen Nanatsu-Orochi enters the battlefield or attacks, mill four cards.\n{3}{R}{R}{G}: Nanatsu-Orochi gets +1/+0 until end of turn for each creature card in your graveyard, then gains double strike until end of turn. Activate only once each turn." },
+      { name: "Kyōdai-Kiba, World-Eater Leviathan", cost: "{5}{R}{G}{G}", type: "Creature — Hydra", pt: "12/4", text: "Double strike, trample, haste.\nWhenever Kyōdai-Kiba deals combat damage to a player, mill four cards. You may untap up to X target creatures you control, where X is the number of creature cards milled this way." },
+
+      // 5. Pillar 3: Beasts — Siege-Breakers & Exile Payoffs (6)
+      { name: "Hayate-Ōkami, Gale-Fang Stalker", cost: "{G}", type: "Creature — Beast", pt: "2/1", text: "Haste.\n{1}{G}, Sacrifice Hayate-Ōkami: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. If you have two or more creature types among creature cards in your graveyard, put that land onto the battlefield untapped instead." },
+      { name: "Kiba-Shishi, Cinder-Mane Ravager", cost: "{1}{R}", type: "Creature — Beast", pt: "3/1", text: "Menace, haste.\nWhenever you exile one or more creature cards, Kiba-Shishi gets +1/+0 and gains first strike until end of turn." },
+      { name: "Mori-Kuma, Timber-Crusher Forager", cost: "{2}{G}", type: "Creature — Beast", pt: "4/2", text: "Trample.\nWhen Mori-Kuma enters the battlefield, mill two cards. If a land card was milled this way, you may put it onto the battlefield tapped. Otherwise, put a +1/+0 counter on Mori-Kuma." },
+      { name: "Yama-Tora, Crag-Prowler Alpha", cost: "{2}{R}{G}", type: "Creature — Beast", pt: "5/3", text: "Trample, haste.\nYama-Tora gets +1/+0 for each creature type among creature cards in your graveyard.\nWhenever Yama-Tora deals combat damage to a player, you may exile up to one target creature card from your graveyard. When you do, draw a card." },
+      { name: "Ō-Inoshishi, Iron-Tusk Juggernaut", cost: "{3}{G}{G}", type: "Creature — Beast", pt: "7/3", text: "Trample, menace.\nWhenever Ō-Inoshishi attacks, target creature you control gains trample and gets +X/+0 until end of turn, where X is the number of creature types among creature cards in your graveyard." },
+      { name: "Maguma-Baku, Caldera-Maw Behemoth", cost: "{4}{R}{G}{G}", type: "Creature — Beast", pt: "10/4", text: "Trample, menace, haste.\nWhen Maguma-Baku enters the battlefield, you may exile up to three creature cards with different creature types from your graveyard. For each card exiled this way, Maguma-Baku deals 3 damage to up to one target creature or planeswalker an opponent controls." },
+
+      // 6. Pillar 4: Dragons — Sky-Sovereigns, Rituals & Recyclers (10)
+      { name: "Hi-no-Ryū, Ember-Whelp Scout", cost: "{R}", type: "Creature — Dragon", pt: "2/1", text: "Flying, haste.\nSacrifice Hi-no-Ryū: Add {R}{G}, then scry 1." },
+      { name: "Kaze-Ko, Gale-Wing Hatchling", cost: "{1}{R}", type: "Creature — Dragon", pt: "3/1", text: "Flying, haste.\nWhenever Kaze-Ko deals combat damage to a player, you may discard a card. If you do, draw a card and create a Treasure token." },
+      { name: "Kin-Uroko, Gold-Scale Drake", cost: "{2}{R}", type: "Creature — Dragon", pt: "4/2", text: "Flying.\nWhenever Kin-Uroko attacks, add {R} for each creature type among creature cards in your graveyard. Until end of turn, you don't lose this mana as steps and phases end." },
+      { name: "Hai-Ryū, Ash-Veil Reclaimer", cost: "{2}{R}{G}", type: "Creature — Dragon", pt: "5/2", text: "Flying, haste.\nWhen Hai-Ryū enters the battlefield, shuffle up to two target creature cards from your graveyard into your library, then scry 2." },
+      { name: "Homura-Tsubasa, Cinder-Wing Stalker", cost: "{3}{R}", type: "Creature — Dragon", pt: "6/2", text: "Flying, first strike.\nWhenever Homura-Tsubasa deals combat damage to a player, exile the top card of your library. Until the end of your next turn, you may play that card. When you cast a creature spell this way, it gains haste until end of turn." },
+      { name: "Kazan-Ryū, Caldera-Breath Sovereign", cost: "{3}{R}{G}", type: "Creature — Dragon", pt: "7/3", text: "Flying, trample, haste.\nWhenever Kazan-Ryū attacks, you may exile a creature card from your graveyard. When you do, Dragons you control gain menace until end of turn." },
+      { name: "Kumo-Gami, Storm-Cloud Arbiter", cost: "{3}{R}{R}", type: "Creature — Dragon", pt: "6/3", text: "Flying, vigilance.\nWhenever you cast a creature spell from your graveyard or the top of your library, create a Treasure token and Kumo-Gami gets +2/+0 until end of turn." },
+      { name: "Gōka-Ryū, Hellfire-Sky Tyrant", cost: "{4}{R}{R}", type: "Creature — Dragon", pt: "8/3", text: "Flying, trample, haste.\nWhenever Gōka-Ryū attacks, surveil 1. If you put a creature card into your graveyard this way, Gōka-Ryū deals damage equal to that card's power to target creature or planeswalker an opponent controls." },
+      { name: "Tenkū-Ō, Celestial-Ash Dragon", cost: "{4}{R}{R}{G}", type: "Creature — Dragon", pt: "9/4", text: "Flying, double strike, haste.\nWhenever Tenkū-Ō deals combat damage to a player, you may shuffle up to three target creature cards from your graveyard into your library, then draw a card for each card shuffled into your library this way." },
+      { name: "Shin-Ryū, World-Scorcher Apex", cost: "{5}{R}{R}{G}", type: "Creature — Dragon", pt: "10/4", text: "Flying, trample, haste.\nWhenever Shin-Ryū attacks, it deals 4 damage to each opponent and each creature your opponents control." },
+
+      // 7. Instants & Sorceries (18)
+      // Fast Ramp & Rituals (6)
+      { name: "Hi-no-Kokyū, Ember-Breath Ritual", cost: "{R}", type: "Instant", text: "Add two mana in any combination of {R} and/or {G}. If you control a creature with power 6 or greater, add four mana in any combination of {R} and/or {G} instead." },
+      { name: "Mori-no-Ibuki, Deep-Root Surge", cost: "{1}{G}", type: "Sorcery", text: "Search your library for a basic land card, put it onto the battlefield tapped, then scry 1." },
+      { name: "Kazan-no-Myaku, Magma-Vein Cultivation", cost: "{2}{G}", type: "Sorcery", text: "Search your library for up to two basic land cards, reveal them, put one onto the battlefield tapped and the other on top of your library, then shuffle." },
+      { name: "Ryū-no-Hōkō, Dragon-Roar Acceleration", cost: "{2}{R}", type: "Sorcery", text: "Add {R} for each creature you control with power 6 or greater. Until end of turn, you don't lose this mana as steps and phases end." },
+      { name: "Daichi-no-Mezame, Earth-Pulse Awakening", cost: "{3}{G}", type: "Sorcery", text: "Mill four cards. You may put up to two land cards from your graveyard onto the battlefield tapped." },
+      { name: "Kaminari-no-Shōgeki, Thunder-Strike Burst", cost: "{1}{R}", type: "Instant", text: "Choose one —\n• Create two Treasure tokens.\n• Creatures you control get +2/+0 and gain trample until end of turn." },
+
+      // Graveyard Fuel, Top-Deck Setup & Card Advantage (6)
+      { name: "Hoshi-no-Michibiki, Star-Path Alignment", cost: "{G}", type: "Instant", text: "Look at the top four cards of your library. You may reveal a creature or land card from among them and put it on top of your library. Put the rest into your graveyard." },
+      { name: "Chi-no-Kansatsu, Blood-Scry Divination", cost: "{1}{R}", type: "Sorcery", text: "Discard a card, then draw two cards. If the discarded card was a creature card, scry 2." },
+      { name: "Yami-no-Uzu, Abyssal-Maw Churn", cost: "{1}{G}", type: "Sorcery", text: "Mill five cards. You may return a creature card or land card from among the milled cards to your hand." },
+      { name: "Kaze-no-Rinne, Gale-Cycle Recurrence", cost: "{2}{G}", type: "Instant", text: "Shuffle up to four target creature cards from your graveyard into your library, then draw two cards." },
+      { name: "Homura-no-Keiji, Cinder-Vision Revelation", cost: "{2}{R}", type: "Instant", text: "Exile the top three cards of your library. Until the end of your next turn, you may play those cards." },
+      { name: "Shinpi-no-Shōkan, Apex-Call Genesis", cost: "{4}{G}{G}", type: "Sorcery", text: "Look at the top seven cards of your library. You may put up to two creature cards with different creature types from among them onto the battlefield. Put the rest into your graveyard." },
+
+      // Removal, Combat Tricks & Protection (6)
+      { name: "Kiba-no-Gekitotsu, Fang-Clash Ambush", cost: "{1}{G}", type: "Instant", text: "Target creature you control gets +2/+0 until end of turn, then deals damage equal to its power to target creature you don't control." },
+      { name: "Bakuen-no-Kaze, Blast-Flame Gale", cost: "{1}{R}", type: "Instant", text: "Bakuen-no-Kaze deals 3 damage to any target. If a creature dealt damage this way would die this turn, exile it instead." },
+      { name: "Shizen-no-Hakai, Wild-Root Shatter", cost: "{1}{G}", type: "Instant", text: "Destroy target artifact or enchantment. Mill two cards." },
+      { name: "Kōtetsu-no-Uroko, Iron-Scale Deflection", cost: "{G}", type: "Instant", text: "Target creature you control gains hexproof and indestructible until end of turn. Untap it." },
+      { name: "Mōjū-no-Toppa, Beast-Stampede Breach", cost: "{2}{R}{G}", type: "Sorcery", text: "Creatures you control get +2/+0 and gain trample and haste until end of turn. Whenever a creature you control deals combat damage to a player this turn, mill two cards." },
+      { name: "Tenpen-Chii, Cataclysm-Cairn Eruption", cost: "{3}{R}{R}", type: "Sorcery", text: "Tenpen-Chii deals 5 damage to each creature without flying and each planeswalker." },
+
+      // 8. Artifacts & Enchantments (9)
+      // Artifacts (4)
+      { name: "Hi-no-Tama, Cinder-Core Signet", cost: "{1}", type: "Artifact", text: "{T}: Add {R} or {G}. Spend this mana only to cast creature spells or activate abilities of creatures." },
+      { name: "Yōgan-no-Saishō, Magma-Cairn Monolith", cost: "{2}", type: "Artifact", text: "{T}: Add {C}.\n{1}, {T}, Mill a card: Add {R} or {G}." },
+      { name: "Ryū-no-Hōju, Dragon-Heart Orb", cost: "{3}", type: "Artifact", text: "{T}: Add {R}{G}.\n{2}, {T}, Sacrifice Ryū-no-Hōju: Return target creature card from your graveyard to your hand, or put it on top of your library." },
+      { name: "Tenkū-no-Rashinban, Sky-Path Astrolabe", cost: "{2}", type: "Artifact", text: "{1}, {T}: Scry 2.\nWhenever you cast a spell from anywhere other than your hand, untap Tenkū-no-Rashinban." },
+
+      // Enchantments (5)
+      { name: "Kiba-no-Kodō, Fang-Pulse Rhythm", cost: "{1}{R}{G}", type: "Enchantment", text: "Creatures you control have haste.\nWhenever a creature you control with power 5 or greater enters the battlefield, mill two cards, then draw a card if there are three or more creature types among creature cards in your graveyard." },
+      { name: "Chi-no-Kyōmei, Grave-Vein Resonance", cost: "{2}{G}", type: "Enchantment", text: "Whenever one or more creature cards are put into your graveyard from your library, put a +1/+0 counter on target creature you control. This ability triggers only once each turn.\n{2}{G}, Exile three creature cards with different creature types from your graveyard: Draw two cards." },
+      { name: "Homura-no-Kōrin, Cinder-Cairn Ascendancy", cost: "{2}{R}{G}", type: "Enchantment", text: "Whenever a creature you control attacks alone or alongside creatures that don't share a creature type with it, attacking creatures you control gain trample and get +1/+0 until end of turn." },
+      { name: "Arashi-no-Yochō, Tempest-Omen Conduit", cost: "{1}{R}", type: "Enchantment", text: "At the beginning of your upkeep, look at the top card of your library. You may put it into your graveyard.\nWhenever you exile one or more creature cards from your graveyard, Arashi-no-Yochō deals 2 damage to each opponent." },
+      { name: "Shijū-no-Kizuna, Four-Pillar Convergence", cost: "{3}{R}{G}", type: "Enchantment", text: "Creature spells you cast cost {1} less for each creature type in your graveyard." },
+
+      // 9. Lands (36: 12 Custom Utility/Dual Lands + 12 Forests + 12 Mountains)
+      { name: "Kizan-Shima, Cinder-Crag Stronghold", cost: "", type: "Land — Mountain Forest", isLand: true, entersTapped: true, text: "({T}: Add {R} or {G}.)\nKizan-Shima enters the battlefield tapped. When it enters the battlefield, mill a card." },
+      { name: "Kasai-Tani, Flame-Valley Gorge", cost: "", type: "Land", isLand: true, text: "{T}: Add {C}.\n{1}, {T}: Add {R} or {G}. When you spend this mana to cast a creature spell, look at the top card of your library." },
+      { name: "Mori-Numa, Deep-Root Mire", cost: "", type: "Land", isLand: true, text: "{T}: Add {G}.\n{2}, {T}, Sacrifice Mori-Numa: Return target land card from your graveyard to your hand." },
+      { name: "Arashi-Mine, Storm-Peak Caldera", cost: "", type: "Land", isLand: true, text: "{T}: Add {R}.\n{2}, {T}, Sacrifice Arashi-Mine: Scry 2, then mill two cards." },
+      { name: "Ryū-no-Seichi, Dragon-Roost Shrine", cost: "", type: "Land", isLand: true, text: "{T}: Add {R} or {G}.\nWhenever a creature you control with power 5 or greater enters the battlefield, Ryū-no-Seichi deals 1 damage to each opponent." },
+      { name: "Tenchi-Kaidō, World-Root Pathway", cost: "", type: "Land", isLand: true, text: "As Tenchi-Kaidō enters the battlefield, choose Mountain or Forest. It has the chosen basic land type.\n{T}: Add {R} or {G}." },
+      { name: "Kiba-Gawa, Fang-River Cascades", cost: "", type: "Land", isLand: true, text: "{T}: Add {R} or {G}. Kiba-Gawa enters the battlefield tapped unless you control a Beast or Hydra." },
+      { name: "Shinkū-Tōge, Void-Pass Ridge", cost: "", type: "Land", isLand: true, text: "{T}: Add {C}.\n{R}{G}, {T}: Exile a creature card from your graveyard. Add {R}{R}{G}{G}. Spend this mana only to cast creature spells." },
+      { name: "Yōgan-Sai, Magma-Flow Basin", cost: "", type: "Land", isLand: true, text: "{T}: Add {R}.\n{1}, {T}, Mill a card: Yōgan-Sai deals 1 damage to target creature an opponent controls." },
+      { name: "Daichi-no-Hoko, Earth-Roar Sanctuary", cost: "", type: "Land", isLand: true, text: "{T}: Add {G}.\n{1}, {T}, Put a creature card from your graveyard on top of your library: Gain 2 life." },
+      { name: "Homura-Hako, Cinder-Cairn Vault", cost: "", type: "Land", isLand: true, text: "{T}: Add {R} or {G}.\n{3}, {T}, Sacrifice Homura-Hako: Draw a card. Activate only if there are four or more creature types among creature cards in your graveyard." },
+      { name: "Kishin-Yūō, Ogre-King's Colosseum", cost: "", type: "Land", isLand: true, text: "{T}: Add {C}.\n{T}: Add {R} or {G}. Spend this mana only to cast spells from anywhere other than your hand." }
+    ];
+
+    // Add 12 Forests and 12 Mountains so total = 100 exact cards
+    for (let i = 0; i < 12; i++) {
+      DECK_BLUEPRINT.push({ name: "Forest", cost: "", type: "Basic Land — Forest", isLand: true, text: "({T}: Add {G}.)" });
+    }
+    for (let i = 0; i < 12; i++) {
+      DECK_BLUEPRINT.push({ name: "Mountain", cost: "", type: "Basic Land — Mountain", isLand: true, text: "({T}: Add {R}.)" });
+    }
+
+    // Game State
+    let state = {
+      life: 40,
+      oppLife: 40,
+      commanderTax: 0,
+      topPeekVisible: true,
+      teamTempPower: 0,
+      teamTempTrample: false,
+      teamTempHaste: false,
+      cards: [],
+      selectedCardId: null,
+      browsingZone: null
+    };
+
+    let saveTimeout = null;
+    const BROWSER_SAVE_KEY = 'cinder_cairn_playmat_v1';
+
+    function openPlaymatDB() {
+      return new Promise((resolve, reject) => {
+        if (!window.indexedDB) return reject(new Error("IndexedDB unavailable"));
+        const req = indexedDB.open('CinderCairnPlaymatDB', 1);
+        req.onupgradeneeded = () => req.result.createObjectStore('saves');
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function writeBrowserSave(payload) {
+      try {
+        window.name = BROWSER_SAVE_KEY + ':' + JSON.stringify(payload);
+      } catch (e) {}
+
+      try {
+        const idb = await openPlaymatDB();
+        await new Promise((resolve, reject) => {
+          const tx = idb.transaction('saves', 'readwrite');
+          tx.objectStore('saves').put(payload, BROWSER_SAVE_KEY);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      } catch (e) {}
+    }
+
+    async function readBrowserSave() {
+      try {
+        if (window.name && window.name.startsWith(BROWSER_SAVE_KEY + ':')) {
+          return JSON.parse(window.name.slice(BROWSER_SAVE_KEY.length + 1));
+        }
+      } catch (e) {}
+
+      try {
+        const idb = await openPlaymatDB();
+        const data = await new Promise((resolve, reject) => {
+          const tx = idb.transaction('saves', 'readonly');
+          const req = tx.objectStore('saves').get(BROWSER_SAVE_KEY);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+        if (data) return data;
+      } catch (e) {}
+
+      return null;
+    }
+
+    function saveGameState() {
+      const payload = {
+        life: state.life,
+        oppLife: state.oppLife,
+        commanderTax: state.commanderTax,
+        topPeekVisible: state.topPeekVisible,
+        teamTempPower: state.teamTempPower,
+        teamTempTrample: state.teamTempTrample,
+        teamTempHaste: state.teamTempHaste,
+        cardsJson: JSON.stringify(state.cards),
+        updatedAt: Date.now()
+      };
+
+      writeBrowserSave(payload);
+
+      if (!db || !currentUser) return;
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(async () => {
+        try {
+          const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'playmatState', 'activeGame');
+          await setDoc(ref, payload);
+        } catch (err) {
+          console.error("Failed to save game progress:", err);
+        }
+      }, 300);
+    }
+
+    async function loadGameState() {
+      const browserData = await readBrowserSave();
+      if (browserData && browserData.cardsJson) {
+        state.life = browserData.life ?? 40;
+        state.oppLife = browserData.oppLife ?? 40;
+        state.commanderTax = browserData.commanderTax ?? 0;
+        state.topPeekVisible = browserData.topPeekVisible ?? true;
+        state.teamTempPower = browserData.teamTempPower ?? 0;
+        state.teamTempTrample = browserData.teamTempTrample ?? false;
+        state.teamTempHaste = browserData.teamTempHaste ?? false;
+        state.cards = JSON.parse(browserData.cardsJson);
+        return true;
+      }
+
+      if (!db || !currentUser) return false;
+      try {
+        const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'playmatState', 'activeGame');
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && data.cardsJson) {
+            state.life = data.life ?? 40;
+            state.oppLife = data.oppLife ?? 40;
+            state.commanderTax = data.commanderTax ?? 0;
+            state.topPeekVisible = data.topPeekVisible ?? true;
+            state.teamTempPower = data.teamTempPower ?? 0;
+            state.teamTempTrample = data.teamTempTrample ?? false;
+            state.teamTempHaste = data.teamTempHaste ?? false;
+            state.cards = JSON.parse(data.cardsJson);
+            return true;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load saved game:", err);
+      }
+      return false;
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('opacity-0');
+      clearTimeout(el._timer);
+      el._timer = setTimeout(() => el.classList.add('opacity-0'), 2300);
+    }
+
+    function getCreatureSubtypes(typeStr) {
+      if (!typeStr || !typeStr.includes('Creature')) return [];
+      const parts = typeStr.split('—');
+      if (parts.length < 2) return [];
+      return parts[1].trim().split(/\s+/).filter(Boolean);
+    }
+
+    function getGraveyardCreatureStats() {
+      const gyCreatures = state.cards.filter(c => c.zone === 'graveyard' && c.type && c.type.includes('Creature'));
+      const distinctTypes = new Set();
+      gyCreatures.forEach(c => {
+        getCreatureSubtypes(c.type).forEach(t => distinctTypes.add(t));
+      });
+      return {
+        gyCreatures,
+        distinctTypes: Array.from(distinctTypes)
+      };
+    }
+
+    function initDeck() {
+      let uid = 1;
+      state.cards = DECK_BLUEPRINT.map(c => ({
+        ...c,
+        id: 'card_' + (uid++),
+        zone: c.isCommander ? 'command' : 'library',
+        tapped: false,
+        plus1: 0,
+        plus10: 0,
+        tempPower: 0,
+        tempDoubleStrike: false,
+        tempTrample: false,
+        tempMenace: false,
+        reanimatedExile: false,
+        isToken: false
+      }));
+      shuffleLibrary(true);
+    }
+
+    function shuffleLibrary(silent = false) {
+      const lib = state.cards.filter(c => c.zone === 'library');
+      const others = state.cards.filter(c => c.zone !== 'library');
+      for (let i = lib.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [lib[i], lib[j]] = [lib[j], lib[i]];
+      }
+      state.cards = [...others, ...lib];
+      if (!silent) showToast("Library shuffled!");
+      render();
+    }
+
+    function newGame() {
+      state.life = 40;
+      state.oppLife = 40;
+      state.commanderTax = 0;
+      state.teamTempPower = 0;
+      state.teamTempTrample = false;
+      state.teamTempHaste = false;
+      initDeck();
+      drawCards(7, true);
+      showToast("New 1v1 game started — drew 7 cards!");
+    }
+
+    function mulligan() {
+      state.teamTempPower = 0;
+      state.teamTempTrample = false;
+      state.teamTempHaste = false;
+      state.cards.forEach(c => {
+        if (!c.isToken && c.zone !== 'command') {
+          c.zone = 'library';
+          c.tapped = false;
+          c.plus1 = 0;
+          c.plus10 = 0;
+          c.tempPower = 0;
+          c.tempDoubleStrike = false;
+          c.tempTrample = false;
+          c.tempMenace = false;
+          c.reanimatedExile = false;
+        }
+      });
+      state.cards = state.cards.filter(c => !c.isToken);
+      shuffleLibrary(true);
+      drawCards(7, true);
+      showToast("Mulliganed — shuffled & drew 7!");
+    }
+
+    function drawCards(count, silent = false) {
+      let drawn = 0;
+      for (let i = 0; i < count; i++) {
+        const top = state.cards.find(c => c.zone === 'library');
+        if (top) {
+          top.zone = 'hand';
+          drawn++;
+        }
+      }
+      if (!silent) showToast(drawn ? `Drew ${drawn} card${drawn > 1 ? 's' : ''}` : "Library is empty!");
+      render();
+    }
+
+    function changeLife(who, delta) {
+      if (who === 'opp') {
+        state.oppLife += delta;
+      } else {
+        state.life += delta;
+      }
+      render();
+    }
+
+    function millCards(count) {
+      let milled = [];
+      for (let i = 0; i < count; i++) {
+        const top = state.cards.find(c => c.zone === 'library');
+        if (top) {
+          top.zone = 'graveyard';
+          milled.push(top.name);
+        }
+      }
+      showToast(milled.length ? `Milled: ${milled.join(', ')}` : "Library is empty!");
+      render();
+    }
+
+    function untapAll() {
+      state.cards.forEach(c => {
+        if (c.zone === 'battlefield') c.tapped = false;
+      });
+      showToast("Untapped all permanents");
+      render();
+    }
+
+    function toggleTopPeekVisibility() {
+      state.topPeekVisible = !state.topPeekVisible;
+      render();
+    }
+
+    function moveTopToBottom() {
+      const topIdx = state.cards.findIndex(c => c.zone === 'library');
+      if (topIdx === -1) return;
+      const [topCard] = state.cards.splice(topIdx, 1);
+      state.cards.push(topCard);
+      showToast(`Scry bottom: put ${topCard.name} on bottom of library`);
+      if (!document.getElementById('topdeck-modal').classList.contains('hidden')) {
+        openTopDeckModal();
+      }
+      render();
+    }
+
+    function scryTop(count) {
+      openTopDeckModal();
+    }
+
+    function openTopDeckModal() {
+      const top = state.cards.find(c => c.zone === 'library');
+      const displayEl = document.getElementById('topdeck-card-display');
+      const actionsEl = document.getElementById('topdeck-actions');
+      actionsEl.innerHTML = '';
+
+      if (!top) {
+        displayEl.innerHTML = `<p class="text-xs text-stone-500 italic">Your library is empty.</p>`;
+      } else {
+        displayEl.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-orange-950 text-orange-300 border border-orange-800">Top Card of Library</span>
+              <h4 class="text-sm font-extrabold text-white mt-1">${top.name}</h4>
+              <p class="text-[11px] text-orange-300/90">${top.type} ${top.pt ? `• ${top.pt}` : ''}</p>
+            </div>
+            <span class="text-xs font-bold bg-stone-800 px-2 py-1 rounded-lg text-amber-300">${top.cost || 'Land'}</span>
+          </div>
+          <p class="text-xs text-stone-300 pt-1.5 border-t border-stone-800 whitespace-pre-line leading-relaxed">${top.text}</p>
+        `;
+
+        const addTopBtn = (label, cls, fn) => {
+          const b = document.createElement('button');
+          b.className = `py-2 px-3 rounded-xl font-bold text-xs transition active:scale-95 ${cls}`;
+          b.textContent = label;
+          b.onclick = fn;
+          actionsEl.appendChild(b);
+        };
+
+        const isSpell = top.type.startsWith('Instant') || top.type.startsWith('Sorcery');
+        if (isSpell) {
+          addTopBtn('Cast from Top → Graveyard', 'col-span-2 bg-orange-600 hover:bg-orange-500 text-stone-950', () => {
+            moveCard(top.id, 'graveyard');
+            closeModal('topdeck-modal');
+          });
+        } else {
+          addTopBtn('Play / Cast from Top → Battlefield', 'col-span-2 bg-orange-600 hover:bg-orange-500 text-stone-950', () => {
+            moveCard(top.id, 'battlefield');
+            closeModal('topdeck-modal');
+          });
+        }
+        addTopBtn('Keep on Top (Scry Top)', 'bg-emerald-900/80 hover:bg-emerald-800 text-emerald-100', () => {
+          closeModal('topdeck-modal');
+          showToast(`Kept ${top.name} on top`);
+        });
+        addTopBtn('Put on Bottom (Scry Bottom)', 'bg-stone-700 hover:bg-stone-600 text-white', () => {
+          moveTopToBottom();
+        });
+        addTopBtn('Mill / Surveil to Graveyard', 'bg-amber-900/80 hover:bg-amber-800 text-amber-100', () => {
+          moveCard(top.id, 'graveyard');
+          openTopDeckModal();
+        });
+        addTopBtn('Exile Top Card (Impulse)', 'bg-red-900/80 hover:bg-red-800 text-red-100', () => {
+          moveCard(top.id, 'exile');
+          openTopDeckModal();
+        });
+      }
+
+      document.getElementById('topdeck-modal').classList.remove('hidden');
+      document.getElementById('topdeck-modal').classList.add('flex');
+    }
+
+    function moveCard(cardId, targetZone, options = {}) {
+      const card = state.cards.find(c => c.id === cardId);
+      if (!card) return;
+
+      const prevZone = card.zone;
+
+      if (card.isToken && targetZone !== 'battlefield') {
+        state.cards = state.cards.filter(c => c.id !== cardId);
+        closeModal('card-modal');
+        showToast(`${card.name} ceased to exist`);
+        render();
+        return;
+      }
+
+      if (card.isCommander && prevZone === 'command' && targetZone === 'battlefield') {
+        state.commanderTax += 2;
+      }
+
+      card.zone = targetZone;
+      card.tapped = false;
+
+      if (targetZone === 'battlefield') {
+        card.plus1 = 0;
+        card.plus10 = 0;
+        card.tempPower = 0;
+        card.tempDoubleStrike = false;
+        card.tempTrample = false;
+        card.tempMenace = false;
+        card.reanimatedExile = Boolean(options.reanimatedExile);
+
+        if (options.reanimatedExile) {
+          card.tapped = true;
+          card.tempDoubleStrike = true;
+          card.tempTrample = true;
+          card.tempMenace = true;
+        }
+        if (card.entersTapped) {
+          card.tapped = true;
+        }
+        if (card.name === 'Kiba-Gawa, Fang-River Cascades') {
+          const hasBeastOrHydra = state.cards.some(c =>
+            c.zone === 'battlefield' && c.id !== card.id && c.type &&
+            (c.type.includes('Beast') || c.type.includes('Hydra'))
+          );
+          if (!hasBeastOrHydra) card.tapped = true;
+        }
+      } else {
+        card.plus1 = 0;
+        card.plus10 = 0;
+        card.tempPower = 0;
+        card.tempDoubleStrike = false;
+        card.tempTrample = false;
+        card.tempMenace = false;
+        card.reanimatedExile = false;
+      }
+
+      closeModal('card-modal');
+      if (state.browsingZone) renderBrowserList();
+      showToast(options.reanimatedExile
+        ? `Homura-Ryū Reanimated ${card.name} (+3/-3, Tapped & Attacking)`
+        : `Moved ${card.name} → ${targetZone.toUpperCase()}`
+      );
+      render();
+    }
+
+    function toggleTap(cardId) {
+      const card = state.cards.find(c => c.id === cardId);
+      if (!card || card.zone !== 'battlefield') return;
+      card.tapped = !card.tapped;
+      render();
+    }
+
+    function spawnToken(kind) {
+      const count = kind === 'treasure2' ? 2 : 1;
+      for (let i = 0; i < count; i++) {
+        state.cards.push({
+          id: 'token_' + Date.now() + '_' + Math.floor(Math.random() * 10000) + '_' + i,
+          name: "Treasure Token",
+          cost: "",
+          type: "Artifact Token — Treasure",
+          pt: "",
+          text: "{T}, Sacrifice this artifact: Add one mana of any color.",
+          zone: 'battlefield',
+          tapped: false,
+          plus1: 0,
+          plus10: 0,
+          tempPower: 0,
+          tempDoubleStrike: false,
+          tempTrample: false,
+          tempMenace: false,
+          reanimatedExile: false,
+          isToken: true
+        });
+      }
+      closeModal('token-modal');
+      showToast(`Created ${count} Treasure token${count > 1 ? 's' : ''}`);
+      render();
+    }
+
+    function adjustCounter(field, delta) {
+      const card = state.cards.find(c => c.id === state.selectedCardId);
+      if (!card) return;
+      if (field === 'tempPower') {
+        card.tempPower = (card.tempPower || 0) + delta;
+      } else {
+        card[field] = Math.max(0, (card[field] || 0) + delta);
+      }
+      openCardModal(card.id);
+      render();
+    }
+
+    function toggleKeywordFlag(flag) {
+      const card = state.cards.find(c => c.id === state.selectedCardId);
+      if (!card) return;
+      card[flag] = !card[flag];
+      openCardModal(card.id);
+      render();
+    }
+
+    function adjustTeamPower(delta) {
+      state.teamTempPower = Math.max(0, state.teamTempPower + delta);
+      document.getElementById('modal-team-power-val').textContent = state.teamTempPower;
+      render();
+    }
+
+    function applyTeamPreset(powerAdd, addTrample, addHaste) {
+      state.teamTempPower += powerAdd;
+      if (addTrample) state.teamTempTrample = true;
+      if (addHaste) state.teamTempHaste = true;
+      document.getElementById('modal-team-power-val').textContent = state.teamTempPower;
+      closeModal('buff-modal');
+      showToast(`Applied +${powerAdd}/+0${addTrample ? ', Trample' : ''}${addHaste ? ', Haste' : ''} until end of turn!`);
+      render();
+    }
+
+    function clearTurnBuffs() {
+      state.teamTempPower = 0;
+      state.teamTempTrample = false;
+      state.teamTempHaste = false;
+      state.cards.forEach(c => {
+        c.tempPower = 0;
+        c.tempDoubleStrike = false;
+        c.tempTrample = false;
+        c.tempMenace = false;
+      });
+      if (document.getElementById('modal-team-power-val')) {
+        document.getElementById('modal-team-power-val').textContent = 0;
+      }
+      showToast("Cleared all until-end-of-turn buffs");
+      render();
+    }
+
+    function openTokenModal() {
+      document.getElementById('token-modal').classList.remove('hidden');
+      document.getElementById('token-modal').classList.add('flex');
+    }
+
+    function toggleTempBuffModal() {
+      document.getElementById('modal-team-power-val').textContent = state.teamTempPower;
+      document.getElementById('buff-modal').classList.remove('hidden');
+      document.getElementById('buff-modal').classList.add('flex');
+    }
+
+    function openZoneBrowser(zone) {
+      state.browsingZone = zone;
+      document.getElementById('browser-search').value = '';
+      const titles = { library: 'Search Library', graveyard: 'Graveyard', exile: 'Exile / Impulse Zone' };
+      document.getElementById('browser-title').textContent = titles[zone] || zone;
+      renderBrowserList();
+      document.getElementById('browser-modal').classList.remove('hidden');
+      document.getElementById('browser-modal').classList.add('flex');
+    }
+
+    function renderBrowserList() {
+      const q = document.getElementById('browser-search').value.toLowerCase();
+      const list = document.getElementById('browser-list');
+      const cards = state.cards.filter(c => c.zone === state.browsingZone && (c.name.toLowerCase().includes(q) || c.type.toLowerCase().includes(q)));
+
+      if (!cards.length) {
+        list.innerHTML = `<p class="text-xs text-stone-500 italic py-6 text-center">No cards found in this zone.</p>`;
+        return;
+      }
+
+      list.innerHTML = cards.map(c => `
+        <div onclick="closeModal('browser-modal'); openCardModal('${c.id}')" class="flex items-center justify-between p-2.5 rounded-xl bg-[#110c0a] hover:bg-[#231914] border border-stone-800 cursor-pointer transition">
+          <div>
+            <div class="text-xs font-bold text-white">${c.name}</div>
+            <div class="text-[11px] text-stone-400">${c.type} ${c.pt ? `(${c.pt})` : ''}</div>
+          </div>
+          <span class="text-[11px] font-semibold text-amber-300 bg-stone-800 px-2 py-0.5 rounded">${c.cost || 'Land'}</span>
+        </div>
+      `).join('');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+      document.getElementById(id).classList.remove('flex');
+      if (id === 'browser-modal') state.browsingZone = null;
+    }
+
+    function closeModalOnBackdrop(e, id) {
+      if (e.target.id === id) closeModal(id);
+    }
+
+    function getStaticBuffs(card, gyStats) {
+      let bonusP = 0;
+      let bonusT = 0;
+      const grantedKeywords = new Set();
+
+      const isCreature = card.type && card.type.includes('Creature');
+      if (!isCreature) return { bonusP: 0, bonusT: 0, grantedKeywords: [] };
+
+      const battlefieldCards = state.cards.filter(c => c.zone === 'battlefield');
+      const cardSubtypes = getCreatureSubtypes(card.type);
+
+      // 1. Homura-Ryū passive: "Creatures you control get +1/+0 for each creature card in your graveyard that doesn't share a creature type with them."
+      const homuraCount = battlefieldCards.filter(c => c.name === 'Homura-Ryū, Sovereign of the Cinder-Cairn').length;
+      if (homuraCount > 0 && gyStats.gyCreatures.length > 0) {
+        const nonSharingCount = gyStats.gyCreatures.filter(gyCard => {
+          const gyTypes = getCreatureSubtypes(gyCard.type);
+          return !gyTypes.some(t => cardSubtypes.includes(t));
+        }).length;
+        bonusP += nonSharingCount * homuraCount;
+      }
+
+      // 2. Yama-Tora, Crag-Prowler Alpha: "Yama-Tora gets +1/+0 for each creature type among creature cards in your graveyard."
+      if (card.name === 'Yama-Tora, Crag-Prowler Alpha') {
+        bonusP += gyStats.distinctTypes.length;
+      }
+
+      // 3. Homura-Ryū Reanimation modifier (+3/-3, Haste, Trample, Double Strike, Menace)
+      if (card.reanimatedExile) {
+        bonusP += 3;
+        bonusT -= 3;
+        grantedKeywords.add('Exile @ EoC');
+      }
+
+      // 4. Kiba-no-Kodō, Fang-Pulse Rhythm: "Creatures you control have haste."
+      const hasKibaNoKodo = battlefieldCards.some(c => c.name === 'Kiba-no-Kodō, Fang-Pulse Rhythm');
+      if (hasKibaNoKodo && !(card.text || '').toLowerCase().includes('haste')) {
+        grantedKeywords.add('Haste');
+      }
+
+      // 5. Team-wide temporary turn buffs
+      bonusP += state.teamTempPower;
+      if (state.teamTempTrample && !(card.text || '').toLowerCase().includes('trample') && !card.tempTrample) {
+        grantedKeywords.add('Trample');
+      }
+      if (state.teamTempHaste && !(card.text || '').toLowerCase().includes('haste') && !grantedKeywords.has('Haste')) {
+        grantedKeywords.add('Haste');
+      }
+
+      return {
+        bonusP,
+        bonusT,
+        grantedKeywords: Array.from(grantedKeywords)
+      };
+    }
+
+    function openCardModal(cardId) {
+      const card = state.cards.find(c => c.id === cardId);
+      if (!card) return;
+      state.selectedCardId = cardId;
+
+      document.getElementById('modal-zone-tag').textContent = card.zone.toUpperCase();
+      document.getElementById('modal-card-name').textContent = card.name;
+      document.getElementById('modal-card-type').textContent = card.type;
+      document.getElementById('modal-card-cost').textContent = card.cost || 'Land / Token';
+      document.getElementById('modal-card-cost').classList.toggle('hidden', !card.cost);
+      document.getElementById('modal-card-text').textContent = card.text;
+
+      const ptEl = document.getElementById('modal-card-pt');
+      if (card.pt) {
+        const [p, t] = card.pt.split('/').map(Number);
+        const gyStats = getGraveyardCreatureStats();
+        const buffs = card.zone === 'battlefield' ? getStaticBuffs(card, gyStats) : { bonusP: 0, bonusT: 0, grantedKeywords: [] };
+        const liveP = p + (card.plus1 || 0) + (card.plus10 || 0) + (card.tempPower || 0) + buffs.bonusP;
+        const liveT = t + (card.plus1 || 0) + buffs.bonusT;
+        ptEl.textContent = `${liveP}/${liveT}`;
+      } else {
+        ptEl.textContent = '';
+      }
+
+      const countersBox = document.getElementById('modal-counters-box');
+      if (card.zone === 'battlefield' && !card.isLand) {
+        countersBox.classList.remove('hidden');
+        document.getElementById('modal-plus1-val').textContent = card.plus1 || 0;
+        document.getElementById('modal-plus10-val').textContent = card.plus10 || 0;
+        document.getElementById('modal-temp-power-val').textContent = card.tempPower || 0;
+
+        const setToggleStyle = (id, active, activeCls) => {
+          const btn = document.getElementById(id);
+          btn.className = active
+            ? `px-2 py-1 rounded-lg text-[11px] font-bold border ${activeCls}`
+            : "px-2 py-1 rounded-lg text-[11px] font-semibold border bg-stone-800 border-stone-600 text-stone-300";
+        };
+
+        setToggleStyle('btn-kw-ds', card.tempDoubleStrike, 'bg-red-700 border-red-400 text-white');
+        setToggleStyle('btn-kw-trample', card.tempTrample, 'bg-emerald-700 border-emerald-400 text-white');
+        setToggleStyle('btn-kw-menace', card.tempMenace, 'bg-orange-700 border-orange-400 text-white');
+        setToggleStyle('btn-kw-reanim', card.reanimatedExile, 'bg-amber-700 border-amber-400 text-white');
+      } else {
+        countersBox.classList.add('hidden');
+      }
+
+      const actions = document.getElementById('modal-actions');
+      actions.innerHTML = '';
+
+      const addBtn = (label, cls, fn) => {
+        const b = document.createElement('button');
+        b.className = `py-2 px-3 rounded-xl font-bold text-xs transition active:scale-95 ${cls}`;
+        b.textContent = label;
+        b.onclick = fn;
+        actions.appendChild(b);
+      };
+
+      if (card.zone === 'hand') {
+        const isSpell = card.type.startsWith('Instant') || card.type.startsWith('Sorcery');
+        if (isSpell) {
+          addBtn('Cast → Graveyard', 'col-span-2 bg-orange-600 hover:bg-orange-500 text-stone-950', () => moveCard(card.id, 'graveyard'));
+        } else {
+          addBtn('Play to Battlefield', 'col-span-2 bg-orange-600 hover:bg-orange-500 text-stone-950', () => moveCard(card.id, 'battlefield'));
+        }
+        addBtn('Discard (Graveyard)', 'bg-amber-900/70 hover:bg-amber-800 text-amber-100', () => moveCard(card.id, 'graveyard'));
+        addBtn('Exile', 'bg-red-900/70 hover:bg-red-800 text-red-100', () => moveCard(card.id, 'exile'));
+      } else if (card.zone === 'command') {
+        addBtn('Cast Commander', 'col-span-2 bg-orange-600 hover:bg-orange-500 text-stone-950', () => moveCard(card.id, 'battlefield'));
+      } else if (card.zone === 'battlefield') {
+        addBtn(card.tapped ? 'Untap' : 'Tap', 'bg-amber-500 hover:bg-amber-400 text-stone-950', () => { toggleTap(card.id); openCardModal(card.id); });
+        addBtn(card.isToken ? 'Sacrifice / Destroy Token' : 'Send to Graveyard', 'bg-rose-800 hover:bg-rose-700 text-white', () => moveCard(card.id, 'graveyard'));
+        addBtn('Return to Hand', 'bg-stone-700 hover:bg-stone-600 text-white', () => moveCard(card.id, 'hand'));
+        if (card.isCommander) {
+          addBtn('Command Zone', 'bg-orange-900 hover:bg-orange-800 text-orange-100', () => moveCard(card.id, 'command'));
+        } else {
+          addBtn('Exile', 'bg-red-900/80 hover:bg-red-800 text-red-100', () => moveCard(card.id, 'exile'));
+        }
+      } else if (card.zone === 'graveyard') {
+        addBtn('Put to Hand', 'bg-orange-600 hover:bg-orange-500 text-stone-950', () => moveCard(card.id, 'hand'));
+        addBtn('Exile from Graveyard', 'bg-red-800 hover:bg-red-700 text-white', () => moveCard(card.id, 'exile'));
+        if (card.type.includes('Creature')) {
+          addBtn('Homura-Ryū Reanimate (+3/-3)', 'col-span-2 bg-amber-600 hover:bg-amber-500 text-stone-950', () => moveCard(card.id, 'battlefield', { reanimatedExile: true }));
+        }
+        addBtn('Put on Top of Library', 'bg-emerald-900/80 hover:bg-emerald-800 text-emerald-100', () => {
+          state.cards = state.cards.filter(c => c.id !== card.id);
+          card.zone = 'library';
+          state.cards.unshift(card);
+          closeModal('card-modal');
+          if (state.browsingZone) renderBrowserList();
+          showToast(`Put ${card.name} on top of library`);
+          render();
+        });
+        addBtn('Put to Battlefield', 'bg-stone-700 hover:bg-stone-600 text-white', () => moveCard(card.id, 'battlefield'));
+      } else {
+        addBtn('Play / Cast from Exile', 'col-span-2 bg-orange-600 hover:bg-orange-500 text-stone-950', () => {
+          const isSpell = card.type.startsWith('Instant') || card.type.startsWith('Sorcery');
+          moveCard(card.id, isSpell ? 'graveyard' : 'battlefield');
+        });
+        addBtn('Put to Hand', 'bg-stone-700 hover:bg-stone-600 text-white', () => moveCard(card.id, 'hand'));
+        addBtn('Graveyard', 'bg-amber-900/80 text-amber-100', () => moveCard(card.id, 'graveyard'));
+        if (card.isCommander) addBtn('Command Zone', 'col-span-2 bg-orange-900 text-orange-100', () => moveCard(card.id, 'command'));
+      }
+
+      document.getElementById('card-modal').classList.remove('hidden');
+      document.getElementById('card-modal').classList.add('flex');
+    }
+
+    function render() {
+      document.getElementById('life-total').textContent = state.life;
+      document.getElementById('opp-life-total').textContent = state.oppLife;
+      document.getElementById('cmd-tax').textContent = state.commanderTax;
+
+      const gyStats = getGraveyardCreatureStats();
+      document.getElementById('gy-type-count').textContent = gyStats.distinctTypes.length;
+      document.getElementById('gy-type-list').textContent = gyStats.distinctTypes.length
+        ? `(${gyStats.distinctTypes.join(', ')})`
+        : '(None)';
+
+      // Team Buff HUD
+      const activeBuffsCount = (state.teamTempPower > 0 ? 1 : 0) + (state.teamTempTrample ? 1 : 0) + (state.teamTempHaste ? 1 : 0);
+      document.getElementById('turn-buff-badge').textContent = activeBuffsCount;
+      const buffBar = document.getElementById('active-buff-bar');
+      if (activeBuffsCount > 0) {
+        buffBar.classList.remove('hidden');
+        const parts = [];
+        if (state.teamTempPower > 0) parts.push(`+${state.teamTempPower}/+0 to creatures`);
+        if (state.teamTempTrample) parts.push('Trample');
+        if (state.teamTempHaste) parts.push('Haste');
+        document.getElementById('active-buff-summary').textContent = `Active Turn Buffs: ${parts.join(' • ')}`;
+      } else {
+        buffBar.classList.add('hidden');
+      }
+
+      // Library & Top Card Peek
+      const libCards = state.cards.filter(c => c.zone === 'library');
+      document.getElementById('library-count').textContent = libCards.length;
+      document.getElementById('graveyard-count').textContent = state.cards.filter(c => c.zone === 'graveyard').length;
+      document.getElementById('exile-count').textContent = state.cards.filter(c => c.zone === 'exile').length;
+
+      const topCard = libCards[0];
+      const peekPreview = document.getElementById('top-card-preview');
+      const peekToggleBtn = document.getElementById('toggle-peek-btn');
+      peekToggleBtn.textContent = state.topPeekVisible ? 'Hide' : 'Show';
+      if (!topCard) {
+        peekPreview.textContent = 'Library Empty';
+      } else if (!state.topPeekVisible) {
+        peekPreview.textContent = '•••••••• (Hidden)';
+      } else {
+        peekPreview.textContent = `${topCard.name} ${topCard.cost ? `(${topCard.cost})` : ''}`;
+      }
+
+      // Command Zone
+      const cmdCards = state.cards.filter(c => c.zone === 'command');
+      const cmdContainer = document.getElementById('command-zone-list');
+      cmdContainer.innerHTML = cmdCards.length ? cmdCards.map(c => `
+        <div onclick="openCardModal('${c.id}')" class="p-2.5 rounded-xl bg-gradient-to-br from-orange-950/90 to-[#1e1410] border border-orange-600/70 cursor-pointer hover:border-orange-400 transition">
+          <div class="flex items-center justify-between gap-1">
+            <span class="text-xs font-extrabold text-orange-300 leading-tight">${c.name}</span>
+            <span class="text-[11px] font-bold text-amber-300 shrink-0">${c.cost}</span>
+          </div>
+          <div class="text-[10px] text-stone-300 mt-0.5">${c.type} • ${c.pt}</div>
+        </div>
+      `).join('') : `<p class="text-[11px] text-stone-500 italic">Commander is on the battlefield</p>`;
+
+      // Battlefield Permanents
+      const perms = state.cards.filter(c => c.zone === 'battlefield' && !c.isLand);
+      const permEl = document.getElementById('battlefield-permanents');
+      if (!perms.length) {
+        permEl.innerHTML = `<p class="text-xs text-stone-500 italic p-4">Your battlefield is empty. Play cards from your hand or top of library!</p>`;
+      } else {
+        permEl.innerHTML = perms.map(c => {
+          const buffs = getStaticBuffs(c, gyStats);
+          let ptBadge = '';
+          if (c.pt) {
+            const [p, t] = c.pt.split('/').map(Number);
+            const totalModP = (c.plus1 || 0) + (c.plus10 || 0) + (c.tempPower || 0) + buffs.bonusP;
+            const totalModT = (c.plus1 || 0) + buffs.bonusT;
+            const liveP = p + totalModP;
+            const liveT = t + totalModT;
+            const ptColor = (totalModP > 0 || totalModT > 0) ? 'text-orange-300' : (totalModT < 0) ? 'text-rose-300' : 'text-white';
+            ptBadge = `<span class="px-1.5 py-0.5 rounded bg-stone-900 border border-stone-700 text-[11px] font-extrabold ${ptColor}">${liveP}/${liveT}</span>`;
+          }
+
+          const staticModLabel = (buffs.bonusP !== 0 || buffs.bonusT !== 0)
+            ? `${buffs.bonusP >= 0 ? '+' : ''}${buffs.bonusP}/${buffs.bonusT >= 0 ? '+' : ''}${buffs.bonusT}`
+            : '';
+
+          return `
+            <div onclick="toggleTap('${c.id}')" class="w-40 rounded-xl p-2.5 bg-[#1f1612] border ${c.isCommander ? 'border-orange-500' : 'border-stone-700'} shadow-md cursor-pointer transition-transform duration-150 ${c.tapped ? 'tapped opacity-75' : 'hover:border-orange-400'}">
+              <div class="flex items-start justify-between gap-1">
+                <span class="text-xs font-bold text-white leading-tight line-clamp-2">${c.name}</span>
+              </div>
+              <div class="text-[10px] text-stone-400 truncate mt-0.5">${c.type.replace('Creature — ', '').replace('Legendary ', '')}</div>
+              <div class="flex flex-wrap gap-1 mt-1.5 min-h-[18px]">
+                ${(c.plus1 || 0) > 0 ? `<span class="text-[10px] font-bold bg-emerald-800/90 text-emerald-100 px-1.5 py-0.2 rounded-full">+${c.plus1}/+${c.plus1}</span>` : ''}
+                ${(c.plus10 || 0) > 0 ? `<span class="text-[10px] font-bold bg-amber-800/90 text-amber-100 px-1.5 py-0.2 rounded-full">+${c.plus10}/+0 Ctr</span>` : ''}
+                ${(c.tempPower || 0) !== 0 ? `<span class="text-[10px] font-bold bg-orange-800/90 text-orange-100 px-1.5 py-0.2 rounded-full">${c.tempPower > 0 ? '+' : ''}${c.tempPower}/+0 EOT</span>` : ''}
+                ${staticModLabel ? `<span class="text-[10px] font-bold bg-red-900/90 text-red-100 px-1.5 py-0.2 rounded-full" title="Static / Diversity / Turn bonus">${staticModLabel}</span>` : ''}
+                ${c.tempDoubleStrike ? `<span class="text-[10px] font-bold bg-rose-900 text-rose-200 px-1.5 rounded-full">2x Strike</span>` : ''}
+                ${c.tempTrample ? `<span class="text-[10px] font-bold bg-emerald-900 text-emerald-200 px-1.5 rounded-full">Trample</span>` : ''}
+                ${c.tempMenace ? `<span class="text-[10px] font-bold bg-amber-900 text-amber-200 px-1.5 rounded-full">Menace</span>` : ''}
+                ${buffs.grantedKeywords.map(kw => `<span class="text-[10px] font-bold bg-indigo-900/90 text-indigo-200 px-1.5 py-0.2 rounded-full">${kw}</span>`).join('')}
+              </div>
+              <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-stone-800">
+                <button onclick="event.stopPropagation(); openCardModal('${c.id}')" class="text-[10px] font-semibold text-orange-400 hover:underline">
+                  Inspect / Buff
+                </button>
+                ${ptBadge}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Battlefield Lands
+      const lands = state.cards.filter(c => c.zone === 'battlefield' && c.isLand);
+      document.getElementById('land-count').textContent = lands.length;
+      const landEl = document.getElementById('battlefield-lands');
+      landEl.innerHTML = lands.map(c => {
+        const isForest = c.name === 'Forest';
+        const isMountain = c.name === 'Mountain';
+        const colorCls = isForest ? 'border-emerald-700/80 bg-emerald-950/40 text-emerald-200'
+                       : isMountain ? 'border-red-800/80 bg-red-950/40 text-red-200'
+                       : 'border-amber-700/80 bg-amber-950/30 text-amber-200';
+        return `
+          <div onclick="toggleTap('${c.id}')" class="px-2.5 py-2 rounded-xl border ${colorCls} text-xs font-bold cursor-pointer flex items-center gap-2 transition-transform ${c.tapped ? 'rotate-12 opacity-55' : 'hover:brightness-110'}">
+            <span>${c.name}</span>
+            <button onclick="event.stopPropagation(); openCardModal('${c.id}')" class="text-[10px] opacity-70 hover:opacity-100 underline">•••</button>
+          </div>
+        `;
+      }).join('');
+
+      // Hand Zone
+      const hand = state.cards.filter(c => c.zone === 'hand');
+      document.getElementById('hand-count').textContent = hand.length;
+      const handEl = document.getElementById('hand-zone');
+      handEl.innerHTML = hand.length ? hand.map(c => `
+        <div onclick="openCardModal('${c.id}')" class="w-40 shrink-0 rounded-xl p-2.5 bg-[#221814] hover:bg-[#2c1f1a] border border-stone-700 hover:border-orange-400 cursor-pointer flex flex-col justify-between transition">
+          <div>
+            <div class="flex items-start justify-between gap-1">
+              <span class="text-xs font-bold text-white leading-tight">${c.name}</span>
+              <span class="text-[10px] font-bold text-amber-300 shrink-0">${c.cost}</span>
+            </div>
+            <div class="text-[10px] text-orange-300/80 mt-0.5 truncate">${c.type}</div>
+            <p class="text-[10px] text-stone-300 mt-1.5 line-clamp-4 leading-snug">${c.text}</p>
+          </div>
+          <div class="flex items-center justify-between mt-2 pt-1 border-t border-stone-800/80 text-[10px] text-stone-400">
+            <span>Tap to play</span>
+            ${c.pt ? `<span class="font-bold text-white">${c.pt}</span>` : ''}
+          </div>
+        </div>
+      `).join('') : `<p class="text-xs text-stone-500 italic p-4">Your hand is empty.</p>`;
+
+      saveGameState();
+    }
+
+    Object.assign(window, {
+      newGame,
+      mulligan,
+      drawCards,
+      changeLife,
+      millCards,
+      untapAll,
+      shuffleLibrary,
+      toggleTopPeekVisibility,
+      moveTopToBottom,
+      scryTop,
+      openTopDeckModal,
+      moveCard,
+      toggleTap,
+      spawnToken,
+      openCardModal,
+      adjustCounter,
+      toggleKeywordFlag,
+      adjustTeamPower,
+      applyTeamPreset,
+      clearTurnBuffs,
+      openTokenModal,
+      toggleTempBuffModal,
+      openZoneBrowser,
+      renderBrowserList,
+      closeModal,
+      closeModalOnBackdrop
+    });
+
+    async function bootPlaymat() {
+      try {
+        if (auth) {
+          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            const cred = await signInWithCustomToken(auth, __initial_auth_token);
+            currentUser = cred.user;
+          } else {
+            const cred = await signInAnonymously(auth);
+            currentUser = cred.user;
+          }
+        }
+        const restored = await loadGameState();
+        if (restored && Array.isArray(state.cards) && state.cards.length > 0) {
+          render();
+          showToast("Restored ongoing game!");
+          return;
+        }
+      } catch (err) {
+        console.error("Init restore error:", err);
+      }
+      newGame();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootPlaymat);
+    } else {
+      bootPlaymat();
+    }
+  </script>
+</body>
+</html>
