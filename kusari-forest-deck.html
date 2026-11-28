@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kusari Forest —— Digital Playmat</title>
+  <title>Kusari Forest — Digital Playmat</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -222,7 +222,7 @@
             <button onclick="adjustCounter('plus1', -1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold">−</button>
             <span id="modal-plus1-val" class="text-sm font-extrabold text-white w-6 text-center">0</span>
             <button onclick="adjustCounter('plus1', 1)" class="w-8 h-8 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold">+</button>
-            <button onclick="doubleCardCounters()" class="px-2.5 h-8 rounded-lg bg-lime-700 hover:bg-lime-600 text-white font-extrabold text-xs ml-1" title="Double +1/+1 counters on this creature">×2</button>
+            <button onclick="doubleCardCounters()" class="px-2.5 h-8 rounded-lg bg-lime-700 hover:bg-lime-600 text-white font-extrabold text-xs ml-1" title="Double +1/+1 counters on this permanent">×2</button>
           </div>
         </div>
 
@@ -399,7 +399,7 @@
       { name: "Blight-Spore Beetle", cost: "{1}{B}", type: "Creature — Insect", pt: "2/1", text: "{1}, Sacrifice Blight-Spore Beetle: Mill two cards, then put a +1/+1 counter on target creature you control." },
       { name: "Chitin Harvester", cost: "{1}{B}", type: "Creature — Insect", pt: "1/3", text: "{B}, Sacrifice another creature: Draw a card." },
       { name: "Tomb-Burrower Centipede", cost: "{2}{B}", type: "Creature — Insect", pt: "4/2", text: "Menace.\n{1}{B}, Exile a land from your graveyard: Return Tomb-Burrower Centipede from your graveyard to the battlefield with a +1/+1 counter on it." },
-      { name: "Brood-Mother Mantis", cost: "{2}{B}", type: "Creature — Insect", pt: "3/3", text: "Flying, Deathtouch.\nWhenever a nontoken Insect you control dies, create a 1/1 black Insect creature token." },
+      { name: "Brood-Mother Mantis", cost: "{2}{B}", type: "Creature — Insect", pt: "3/3", text: "Flying, deathtouch.\nWhenever a nontoken Insect you control dies, create a 1/1 black Insect creature token." },
       { name: "Gloom-Shell Goliath", cost: "{3}{B}", type: "Creature — Insect Horror", pt: "3/5", text: "Menace.\nAt the beginning of your end step, if a creature died this turn, put a +1/+1 counter on each of up to two target creatures you control." },
       { name: "Chitin-Lord Behemoth", cost: "{3}{B}{B}", type: "Creature — Insect Horror", pt: "4/4", text: "Deathtouch, menace.\nWhenever you sacrifice a nontoken creature, create a 1/1 black Insect creature token with deathtouch.\n{1}{B}, Sacrifice two Insect tokens: Return target creature card from your graveyard to your hand." },
 
@@ -418,16 +418,16 @@
       { name: "Venom-Lace Recluse", cost: "{1}{B}", type: "Creature — Spider", pt: "1/3", text: "Reach, deathtouch.\n{1}{B}, Sacrifice Venom-Lace Recluse: Target creature gets -2/-2 until end of turn." },
       { name: "Silk-Trap Weaver", cost: "{2}{G}", type: "Creature — Spider", pt: "2/4", text: "Reach.\nWhenever one or more +1/+1 counters are put on Silk-Trap Weaver, tap up to one target creature an opponent controls." },
       { name: "Dusk-Widow Stalker", cost: "{1}{B}{G}", type: "Creature — Spider", pt: "2/3", text: "Menace.\nWhenever Dusk-Widow Stalker deals combat damage to a player, if it has a +1/+1 counter on it, that player discards a card." },
-      { name: "Brood-Web Matriarch", cost: "{2}{G}{G}", type: "Creature — Spider", pt: "2/5", text: "Reach.\nWhenever a non-token Spider you control with a +1/+1 counter on it dies, create two 1/2 green Spider creature tokens with reach." },
+      { name: "Brood-Web Matriarch", cost: "{2}{G}{G}", type: "Creature — Spider", pt: "2/5", text: "Reach.\nWhenever a nontoken Spider you control with a +1/+1 counter on it dies, create two 1/2 green Spider creature tokens with reach." },
       { name: "Blight-Thread Orbweaver", cost: "{2}{B}{G}", type: "Creature — Spider", pt: "3/4", text: "Reach, deathtouch.\nWhenever a creature an opponent controls dies, if it was dealt damage by a Spider you control this turn, you gain 1 life and put a +1/+1 counter on target Spider you control." },
-      { name: "Canopy-Vise Goliath", cost: "{3}{G}{G}", type: "Creature — Spider", pt: "4/6", text: "Reach, trample.\nSpiders you control have +1/+1 and deathtouch.\n{1}, {T}: Regenerate target Spider or Insect." },
+      { name: "Canopy-Vise Goliath", cost: "{3}{G}{G}", type: "Creature — Spider", pt: "4/6", text: "Reach, trample.\nSpiders you control get +1/+1 and have deathtouch.\n{1}, {T}: Regenerate target Spider or Insect." },
       { name: "Charnel-Silk Horror", cost: "{4}{B}{G}", type: "Creature — Spider Horror", pt: "4/7", text: "Reach.\nAt the beginning of your end step, you may choose any number of Spiders you control with a +1/+1 counter on them. Each opponent loses life equal to the number of creatures chosen this way, and you gain life equal to the life lost this way. Then remove a +1/+1 counter from each of those creatures." },
 
-      // 6. Signature Permanents & Ecosystem Spells (25 Cards)
-      { name: "The Loom of Decay", cost: "{2}{B}{G}", type: "Legendary Enchantment", text: "Whenever one or more +1/+1 counters are put on a creature you control, choose one that hasn't been chosen this turn —\n• Create a 1/1 black Insect creature token with deathtouch.\n• Target player mills two cards.\n• You gain 1 life." },
-      { name: "Spore-Weaver's Crucible", cost: "{3}", type: "Artifact", text: "{1}, {T}, Sacrifice a creature: Put two +1/+1 counters on target creature you control, then draw a card.\nWhenever a creature you control dies, put a charge counter on Spore-Weaver's Crucible. Then, if it has three or more charge counters on it, remove them and create a 0/0 green Ooze creature token that enters with three +1/+1 counters on it." },
-      { name: "Canopy Roots, Deep Silt", cost: "{1}{G}{G}", type: "Enchantment", text: "Plants and Spiders you control get +0/+1 and have vigilance.\nWhenever a Plant, Insect, Ooze, or Spider you control enters the battlefield for the first time each turn, you may pay {1}. If you do, mill two cards, then you may return a permanent card from your graveyard to your hand that was milled this way." },
-      { name: "Amber-Sap Cocoon", cost: "{2}{G}", type: "Artifact", text: "{1}, {T}: Put a +1/+1 counter on target creature you control.\n{2}, Sacrifice Amber-Sap Cocoon: Creatures you control with +1/+1 counters on them gain hexproof and indestructible until end of turn." },
+      // 6. Signature Permanents & Ecosystem Spells (25 Cards - Updated Signature Permanents)
+      { name: "The Loom of Decay", cost: "{2}{B}{G}", type: "Legendary Enchantment", text: "Whenever a nontoken creature you control with one or more +1/+1 counters on it dies, put that many +1/+1 counters on The Loom of Decay.\nAt the beginning of combat on your turn, you may move all +1/+1 counters from The Loom of Decay onto target creature you control. If you do, create a 1/1 black Insect creature token with deathtouch." },
+      { name: "Spore-Weaver's Crucible", cost: "{3}", type: "Artifact", text: "{1}, {T}, Sacrifice a creature: Choose one —\n• Put two +1/+1 counters on target creature you control, then draw a card.\n• Create a 0/0 green Ooze creature token that enters the battlefield with a +1/+1 counter on it for each color of mana spent to cast the sacrificed creature.\nWhenever a Plant, Insect, Ooze, or Spider you control dies, you gain 1 life." },
+      { name: "Canopy Roots, Deep Silt", cost: "{1}{G}{G}", type: "Enchantment", text: "Plants and Spiders you control have vigilance and \"{T}: Add {B} or {G}.\"\nWhenever a Plant, Insect, Ooze, or Spider you control enters the battlefield, you may pay {1}. If you do, mill two cards. If a creature card was milled this way, put a +1/+1 counter on that entering creature." },
+      { name: "Amber-Sap Cocoon", cost: "{2}{G}", type: "Artifact", text: "Each creature you control enters the battlefield with an additional +1/+1 counter on it if it's a Plant, Insect, Ooze, or Spider.\n{1}, {T}: Target creature you control gains hexproof until end of turn.\n{2}, Sacrifice Amber-Sap Cocoon: Put a +1/+1 counter on each creature you control, then those creatures gain indestructible until end of turn." },
       { name: "Canopy Seed-Pod", cost: "{G}", type: "Artifact", text: "{1}, {T}, Sacrifice Canopy Seed-Pod: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. If you sacrificed this while controlling a creature with a +1/+1 counter on it, you gain 2 life." },
       { name: "Taproot Surge", cost: "{1}{G}", type: "Sorcery", text: "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. If you control a Plant, put a +1/+1 counter on up to one target creature you control." },
       { name: "Silt-Siphon Ritual", cost: "{1}{B}", type: "Instant", text: "As an additional cost to cast this spell, sacrifice a creature.\nAdd {B/G}{B/G}{B/G}{B/G}." },
@@ -452,7 +452,7 @@
 
       // 7. Custom Mana Base (10 Custom Lands + 28 Basic Lands = 38)
       { name: "Heart of the Rot-Canopy", cost: "", type: "Legendary Land", isLand: true, text: "Enters the battlefield tapped unless you control a Plant, Insect, Ooze, or Spider.\n{T}: Add {B} or {G}.\n{B}{G}, {T}: Put a +1/+1 counter on target creature you control. Activate only as a sorcery." },
-      { name: "Silt-Choked Bog", cost: "", type: "Land", isLand: true, text: "{T}: Add {C}\n{T}, Exile target card from a graveyard: Add {B} or {G}.\nWhen Silt-Choked Bog enters the battlefield, mill two cards." },
+      { name: "Silt-Choked Bog", cost: "", type: "Land", isLand: true, text: "{T}: Add {C}.\n{T}, Exile target card from a graveyard: Add {B} or {G}.\nWhen Silt-Choked Bog enters the battlefield, mill two cards." },
       { name: "Web-Draped Hollow", cost: "", type: "Land", isLand: true, entersTapped: true, text: "Enters the battlefield tapped.\n{T}: Add {B} or {G}.\n{B}, {T}: Target creature gains menace until end of turn." },
       { name: "Spore-Vein Fen", cost: "", type: "Land", isLand: true, text: "{T}: Add {C}.\n{T}, Pay 1 life: Add {B} or {G}." },
       { name: "Chitin-Mound Clearing", cost: "", type: "Land", isLand: true, text: "{T}: Add {C}.\n{1}, {T}, Sacrifice Chitin-Mound Clearing: Search your library for a basic land, put it onto the battlefield tapped, then shuffle." },
@@ -463,7 +463,7 @@
       { name: "Silk-Spun Lookout", cost: "", type: "Land", isLand: true, entersTapped: true, text: "Enters the battlefield tapped.\n{T}: Add {B}.\n{1}{G}, {T}: Choose one —\n• Target creature gains reach until end of turn.\n• Put a +1/+1 counter on target Spider or Plant you control.\nActivate only as a sorcery." }
     ];
 
-    // Add 15 Forests and 13 Swamps so total = 100 exact cards (1 + 4 + 8 + 8 + 8 + 8 + 25 + 10 + 15 + 13 = 100)
+    // Add 15 Forests and 13 Swamps so total = 100 exact cards
     for (let i = 0; i < 15; i++) {
       DECK_BLUEPRINT.push({ name: "Forest", cost: "", type: "Basic Land — Forest", isLand: true, text: "({T}: Add {G}.)" });
     }
@@ -483,7 +483,7 @@
     };
 
     let saveTimeout = null;
-    const BROWSER_SAVE_KEY = 'kusari_forest_playmat_v2';
+    const BROWSER_SAVE_KEY = 'kusari_forest_playmat_v3';
 
     function openPlaymatDB() {
       return new Promise((resolve, reject) => {
@@ -715,6 +715,13 @@
       render();
     }
 
+    function getAmberSapBonus(card) {
+      const isTribalCreature = card.type && card.type.includes('Creature') &&
+        (card.type.includes('Plant') || card.type.includes('Insect') || card.type.includes('Ooze') || card.type.includes('Spider'));
+      if (!isTribalCreature) return 0;
+      return state.cards.filter(c => c.zone === 'battlefield' && c.name === 'Amber-Sap Cocoon').length;
+    }
+
     function moveCard(cardId, targetZone) {
       const card = state.cards.find(c => c.id === cardId);
       if (!card) return;
@@ -737,7 +744,8 @@
       card.tapped = false;
 
       if (targetZone === 'battlefield') {
-        card.plus1 = card.defaultCounters || 0;
+        const amberBonus = getAmberSapBonus(card);
+        card.plus1 = (card.defaultCounters || 0) + amberBonus;
         card.genericCounters = 0;
         if (state.emblem === 'front' && card.type.includes('Creature')) {
           card.tapped = true;
@@ -853,6 +861,7 @@
       }
 
       if (tokenObj) {
+        tokenObj.plus1 += getAmberSapBonus(tokenObj);
         state.cards.push(tokenObj);
         closeModal('token-modal');
         showToast(`Spawned ${tokenObj.name}`);
@@ -966,23 +975,23 @@
         bonusT -= 1;
       }
 
-      // 2. Canopy-Vise Goliath: "Spiders you control have +1/+1 and deathtouch."
-      const hasCanopyVise = battlefieldCards.some(c => c.name === 'Canopy-Vise Goliath');
-      if (hasCanopyVise && card.type.includes('Spider')) {
-        bonusP += 1;
-        bonusT += 1;
+      // 2. Canopy-Vise Goliath: "Spiders you control get +1/+1 and have deathtouch."
+      const canopyViseCount = battlefieldCards.filter(c => c.name === 'Canopy-Vise Goliath').length;
+      if (canopyViseCount > 0 && card.type.includes('Spider')) {
+        bonusP += 1 * canopyViseCount;
+        bonusT += 1 * canopyViseCount;
         if (!card.deathtouch && !(card.text || '').toLowerCase().includes('deathtouch')) {
           grantedKeywords.add('Deathtouch');
         }
       }
 
-      // 3. Canopy Roots, Deep Silt: "Plants and Spiders you control get +0/+1 and have vigilance."
-      const canopyRootsCount = battlefieldCards.filter(c => c.name === 'Canopy Roots, Deep Silt').length;
-      if (canopyRootsCount > 0 && (card.type.includes('Plant') || card.type.includes('Spider'))) {
-        bonusT += 1 * canopyRootsCount;
+      // 3. Canopy Roots, Deep Silt: "Plants and Spiders you control have vigilance and '{T}: Add {B} or {G}.'"
+      const hasCanopyRoots = battlefieldCards.some(c => c.name === 'Canopy Roots, Deep Silt');
+      if (hasCanopyRoots && (card.type.includes('Plant') || card.type.includes('Spider'))) {
         if (!(card.text || '').toLowerCase().includes('vigilance')) {
           grantedKeywords.add('Vigilance');
         }
+        grantedKeywords.add('Mana Dork {B}/{G}');
       }
 
       // 4. Ooze-Seep Mire: "Ooze creatures get +0/+1"
